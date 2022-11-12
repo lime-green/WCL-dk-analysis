@@ -39,13 +39,32 @@ class Analyzer:
             ):
                 continue
 
+            # Don't really care about these
+            if event["type"] in (
+                "resourcechange",
+                "applydebuffstack",
+                "refreshdebuff",
+                "refreshbuff",
+                "damage",
+                "heal",
+            ):
+                continue
+
+            if (
+                event["type"] == "removebuff"
+                and event["targetID"] != self._fight.source
+            ):
+                continue
+
             extra = {}
+
             if event["type"] == "cast":
                 if event["targetID"] != -1:
                     for next_event in self._fight.events[i + 1 :]:  # noqa
                         if (
                             next_event["type"] == "damage"
                             and next_event["abilityGameID"] == event["abilityGameID"]
+                            and next_event["timestamp"] == event["timestamp"]
                         ):
                             is_miss = next_event["is_miss"]
                             hit_type = next_event["hitType"]
@@ -54,6 +73,14 @@ class Analyzer:
                     else:
                         extra.update(is_miss=False, hit_type="NO_DAMAGE_EVENT")
 
+                for next_event in self._fight.events[i + 1 :]:  # noqa
+                    if next_event["type"] == "resourcechange":
+                        if next_event["timestamp"] != event["timestamp"]:
+                            break
+
+                        # We want to get the last change event of the group
+                        event["runic_power"] = next_event["runic_power"]
+
                 event = {
                     "timestamp": event["timestamp"],
                     "ability": event["ability"],
@@ -61,8 +88,11 @@ class Analyzer:
                     "type": event["type"],
                     "source": event["source"],
                     "target": event["target"],
+                    "runic_power": event["runic_power"],
                     **extra,
                 }
+                events.append(event)
+            else:
                 events.append(event)
         return events
 

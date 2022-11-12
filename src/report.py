@@ -97,6 +97,7 @@ class Fight:
         self.end_time = end_time
         self.events = [self._normalize_event(event) for event in events]
         self._fix_cotg()
+        self._add_rp()
 
     @property
     def source(self):
@@ -126,6 +127,18 @@ class Fight:
                     event["runic_power"] += 50
                 else:
                     stated_rp = None
+
+            if event.get("runic_power"):
+                event["runic_power"] = min(event["runic_power"], 1300)
+
+    def _add_rp(self):
+        last_event = None
+
+        for event in self.events:
+            if not event.get("runic_power"):
+                runic_power = last_event["runic_power"] if last_event else 0
+                event["runic_power"] = runic_power
+            last_event = event
 
     def _normalize_event(self, event):
         normalized_event = {**event}
