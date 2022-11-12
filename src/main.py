@@ -11,12 +11,12 @@ def fetch(report_code, character, zone_id):
     )
     report = client.query(report_code, character, zone_id)
 
-    with open("../data.pickle", "wb") as f:
+    with open("data.pickle", "wb") as f:
         pickle.dump(report, f)
 
 
 def load():
-    with open("../data.pickle", "rb") as f:
+    with open("data.pickle", "rb") as f:
         return pickle.load(f)
 
 
