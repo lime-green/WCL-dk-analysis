@@ -28,9 +28,9 @@ test: venv
 
 lint: venv
 	$(VENV_ACTIVATE) && ${PYTHON} -m black src/ tests/
-	$(VENV_ACTIVATE) && ${PYTHON} -m flake8 src/ tests/ --max-line-length 88 --statistics --show-source
+	$(VENV_ACTIVATE) && ${PYTHON} -m flake8 src/ tests/ --max-line-length 100 --statistics --show-source
 
 
 lint-check: venv
-	$(VENV_ACTIVATE) && ${PYTHON} -m black --check src/ tests/
-	$(VENV_ACTIVATE) && ${PYTHON} -m flake8 src/ tests/ --max-line-length 88 --statistics --show-source
+	$(VENV_ACTIVATE) && ${PYTHON} -m black --check src/ tests
+	$(VENV_ACTIVATE) && ${PYTHON} -m flake8 src/ tests/ --max-line-length 100 --statistics --show-source

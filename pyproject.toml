@@ -1,7 +1,7 @@
 [project]
 name = "dk-parse"
 version = "1"
-dependencies = ["requests"]
+dependencies = ["requests", "rich"]
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "flake8"]

@@ -1,6 +1,6 @@
 import requests
 
-from report import Report
+from report import Report, Source
 
 
 class WCLClient:
@@ -14,40 +14,48 @@ class WCLClient:
 
     def _fetch_events(self, report_code, source_id):
         events = []
+        combatant_info = []
         next_page_timestamp = 0
         events_query_t = """
 {
   reportData {
-    report(code: "%s") {
+    report(code: "%(report_code)s") {
       events(
         killType: Kills
-        startTime: %s
+        startTime: %(next_page_timestamp)s
         endTime: 100000000000
-        sourceID: %s
+        sourceID: %(source_id)s
         useActorIDs: true
         includeResources: true
       ) {
         nextPageTimestamp
         data
       }
+      combatantInfo: events(
+        killType: Kills
+        startTime: %(next_page_timestamp)s
+        endTime: 100000000000
+        useActorIDs: true
+        dataType: CombatantInfo
+      ) {
+        data
+      }
     }
   }
 }
-
 """
         while next_page_timestamp is not None:
-            events_query = events_query_t % (
-                report_code,
-                next_page_timestamp,
-                source_id,
+            events_query = events_query_t % dict(
+                report_code=report_code,
+                next_page_timestamp=next_page_timestamp,
+                source_id=source_id,
             )
-            r = self._query(events_query).json()["data"]["reportData"]["report"][
-                "events"
-            ]
-            next_page_timestamp = r["nextPageTimestamp"]
-            events += r["data"]
+            r = self._query(events_query).json()["data"]["reportData"]["report"]
+            combatant_info = r["combatantInfo"]["data"]
+            next_page_timestamp = r["events"]["nextPageTimestamp"]
+            events += r["events"]["data"]
 
-        return events
+        return events, combatant_info
 
     def query(self, report_code, character, zone_id):
         metadata_query = """
@@ -94,16 +102,17 @@ class WCLClient:
 
         for actor in report_metadata["masterData"]["actors"]:
             if actor["type"] == "Player" and actor["name"] == character:
-                source_id = actor["id"]
+                source = Source(actor["id"], actor["name"])
                 break
         else:
             raise Exception("Character not found")
 
-        events = self._fetch_events(report_code, source_id)
+        events, combatant_info = self._fetch_events(report_code, source.id)
 
         return Report(
-            source_id,
+            source,
             events,
+            combatant_info,
             metadata["worldData"]["zone"]["encounters"],
             report_metadata["masterData"]["actors"],
             report_metadata["masterData"]["abilities"],
@@ -117,6 +126,10 @@ class WCLClient:
             headers=dict(Authorization=f"Bearer {self._auth}"),
         )
         r.raise_for_status()
+
+        if "errors" in r.json():
+            raise Exception(r.json()["errors"])
+
         return r
 
     @property
