@@ -126,6 +126,7 @@ class Fight:
         self._fix_cotg()
         self._add_rp()
         self.events = self._coalesce()
+        self._add_proc_consumption()
 
     @property
     def source(self):
@@ -137,6 +138,38 @@ class Fight:
             if "name" not in aura:
                 aura["name"] = self._report.get_ability_name(aura["ability"])
         return combatant_info
+
+    def _add_proc_consumption(self):
+        auras = self.get_combatant_info(self.source.id)["auras"]
+        has_rime = False
+        has_km = False
+
+        for aura in auras:
+            name = aura.get("name")
+            if name == "Rime":
+                has_rime = True
+            elif name == "Killing Machine":
+                has_km = True
+
+        for event in self.events:
+            if event["type"] in ("applybuff", "refreshbuff", "removebuff"):
+                if event["ability"] == "Rime":
+                    has_rime = event["type"] != "removebuff"
+                if event["ability"] == "Killing Machine":
+                    has_km = event["type"] != "removebuff"
+
+            if event["type"] == "cast":
+                event["consumes_km"] = False
+                event["consumes_rime"] = False
+
+            if event["type"] == "cast" and event["ability"] in (
+                "Frost Strike",
+                "Howling Blast",
+            ):
+                if has_rime and event["ability"] == "Howling Blast":
+                    event["consumes_rime"] = True
+                if has_km:
+                    event["consumes_km"] = True
 
     def _fix_cotg(self):
         """
@@ -151,8 +184,8 @@ class Fight:
             if "runic_power_waste" not in event:
                 event["runic_power_waste"] = 0
 
-            event["runic_power_waste"] += event["runic_power"] - 1300
-            event["runic_power"] = min(event["runic_power"], 1300)
+            event["runic_power_waste"] += max(0, event["runic_power"] - 1300)
+            event["runic_power"] = min(1300, event["runic_power"])
 
         for i, event in enumerate(self.events):
             if (
@@ -165,6 +198,7 @@ class Fight:
                 _update_waste(event)
 
                 for next_event in self.events[i + 1 :]:  # noqa
+                    # Need a higher threshold here, it can take a while
                     if next_event["timestamp"] - event["timestamp"] > 500:
                         break
 
@@ -207,23 +241,28 @@ class Fight:
             if event["type"] == "cast":
                 # Check if we're actually hitting a target
                 if event["targetID"] != -1:
+                    event["num_targets"] = 1
                     # Go through subsequent events to coalesce miss into this event
                     for next_event in self.events[i + 1 :]:  # noqa
                         if (
                             next_event["type"] == "damage"
                             and next_event["abilityGameID"] == event["abilityGameID"]
                             and abs(next_event["timestamp"] - event["timestamp"]) < 100
+                            and next_event.get("sourceInstance")
+                            == event.get("sourceInstance")
                         ):
+                            if event["targetID"] != next_event["targetID"]:
+                                event["num_targets"] += 1
+
                             is_miss = next_event["is_miss"]
                             hit_type = next_event["hitType"]
                             extra.update(is_miss=is_miss, hit_type=hit_type)
-                            break
-                    else:
+                    if "is_miss" not in extra:
                         extra.update(is_miss=False, hit_type="NO_DAMAGE_EVENT")
 
                 # Go through subsequent events to coalesce RP into this event
                 for next_event in self.events[i + 1 :]:  # noqa
-                    if next_event["timestamp"] - event["timestamp"] > 100:
+                    if next_event["timestamp"] - event["timestamp"] > 900:
                         break
 
                     if next_event["runic_power"] != event["runic_power"]:
@@ -235,7 +274,7 @@ class Fight:
 
                 # Coalesce runic_power_waste
                 for next_event in self.events[i + 1 :]:  # noqa
-                    if next_event["timestamp"] - event["timestamp"] > 100:
+                    if next_event["timestamp"] - event["timestamp"] > 900:
                         break
 
                     if next_event.get("runic_power_waste") and (
@@ -271,6 +310,7 @@ class Fight:
                     "rune_cost": event["rune_cost"],
                     "runic_power": event["runic_power"],
                     "runic_power_waste": event.get("runic_power_waste", 0),
+                    "num_targets": event.get("num_targets", 0),
                     **extra,
                 }
             events.append(event)
@@ -315,7 +355,7 @@ class Fight:
                     normalized_event["rune_cost"]["unholy"] += 1
             if normalized_event.get("rune_cost") == NO_RUNES:
                 normalized_event["rune_cost"] = None
-        if "waste" in event:
+        if "waste" in event and event["resourceChangeType"] == 6:
             normalized_event["runic_power_waste"] = event["waste"] * 10
 
         return normalized_event

@@ -1,0 +1,198 @@
+import aiohttp
+
+from report import Report, Source
+
+
+class WCLClient:
+    base_url = "https://classic.warcraftlogs.com/api/v2/client"
+
+    def __init__(self, client_id, client_secret):
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._auth = None
+        self._session = None
+
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, *args):
+        await self._session.__aexit__(*args)
+        self._session = None
+
+    async def _fetch_metadata(self, report_code, zone_id):
+        metadata_query = """
+{
+  reportData {
+    report(code: "%s") {
+      masterData {
+        abilities {
+          gameID
+          name
+          icon
+          type
+        }
+        actors {
+          id
+          name
+          type
+        }
+      }
+      fights(killType: Kills) {
+        encounterID
+        id
+        startTime
+        endTime
+      }
+    }
+  }
+  worldData {
+    zone(id: %s) {
+      encounters {
+        id
+        name
+      }
+    }
+  }
+}
+""" % (
+            report_code,
+            zone_id,
+        )
+
+        return (await self._query(metadata_query))["data"]
+
+    async def _fetch_events(self, report_code, source_id, encounter_id):
+        events = []
+        combatant_info = []
+        next_page_timestamp = 0
+        events_query_t = """
+{
+  reportData {
+    report(code: "%(report_code)s") {
+      events(
+        killType: Kills
+        startTime: %(next_page_timestamp)s
+        encounterID: %(encounter_id)s
+        endTime: 100000000000
+        sourceID: %(source_id)s
+        useActorIDs: true
+        includeResources: true
+      ) {
+        nextPageTimestamp
+        data
+      }
+      combatantInfo: events(
+        killType: Kills
+        startTime: %(next_page_timestamp)s
+        endTime: 100000000000
+        useActorIDs: true
+        dataType: CombatantInfo
+      ) {
+        data
+      }
+    }
+  }
+}
+"""
+        while next_page_timestamp is not None:
+            events_query = events_query_t % dict(
+                report_code=report_code,
+                next_page_timestamp=next_page_timestamp,
+                source_id=source_id,
+                encounter_id=encounter_id,
+            )
+            r = (await self._query(events_query))["data"]["reportData"]["report"]
+            combatant_info = r["combatantInfo"]["data"]
+            next_page_timestamp = r["events"]["nextPageTimestamp"]
+            events += r["events"]["data"]
+
+        return events, combatant_info
+
+    async def query(self, report_code, character, encounter_name):
+        zone_query = (
+            """
+{
+    reportData {
+        report(code: "%s") {
+            zone {
+                id
+                name
+            }
+        }
+    }
+}
+        """
+            % report_code
+        )
+
+        zone_id = (await self._query(zone_query))["data"]["reportData"]["report"][
+            "zone"
+        ]["id"]
+        metadata = await self._fetch_metadata(report_code, zone_id)
+        report_metadata = metadata["reportData"]["report"]
+        encounters = metadata["worldData"]["zone"]["encounters"]
+        actors = report_metadata["masterData"]["actors"]
+
+        for actor in actors:
+            if actor["type"] == "Player" and actor["name"] == character:
+                source = Source(actor["id"], actor["name"])
+                break
+        else:
+            raise Exception("Character not found")
+
+        for encounter in encounters:
+            if encounter["name"] == encounter_name:
+                encounter_id = encounter["id"]
+                break
+        else:
+            raise Exception("Encounter not found")
+
+        events, combatant_info = await self._fetch_events(
+            report_code, source.id, encounter_id
+        )
+
+        return Report(
+            source,
+            events,
+            combatant_info,
+            encounters,
+            actors,
+            report_metadata["masterData"]["abilities"],
+            report_metadata["fights"],
+        )
+
+    async def _query(self, query):
+        session = await self.session()
+        r = await session.post(
+            self.base_url,
+            json={"query": query},
+            headers=dict(Authorization=f"Bearer {self._auth}"),
+            raise_for_status=True,
+        )
+        json = await r.json()
+
+        if "errors" in json:
+            raise Exception(json["errors"])
+
+        return json
+
+    async def session(self):
+        if not self._auth:
+            r = await self._session.post(
+                "https://www.warcraftlogs.com/oauth/token",
+                auth=aiohttp.BasicAuth(self._client_id, self._client_secret),
+                data={"grant_type": "client_credentials"},
+                raise_for_status=True,
+            )
+            self._auth = (await r.json())["access_token"]
+        return self._session
+
+
+async def fetch_report(report_code, character, encounter) -> Report:
+    client = WCLClient(
+        "***REMOVED***",
+        "***REMOVED***",
+    )
+    async with client:
+        return await client.query(report_code, character, encounter)
