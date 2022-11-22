@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 
 
@@ -43,6 +44,7 @@ class Report:
         self,
         source: Source,
         events,
+        rankings,
         combatant_info,
         encounters,
         actors,
@@ -51,6 +53,7 @@ class Report:
     ):
         self.source = source
         self._events = events
+        self._rankings = self._parse_rankings(rankings)
         self._combatant_info = combatant_info
         self._encounters = [
             Encounter(encounter["id"], encounter["name"]) for encounter in encounters
@@ -58,6 +61,31 @@ class Report:
         self._actors = actors
         self._abilities = abilities
         self._fights = fights
+
+    def _parse_rankings(self, rankings):
+        ret = {}
+
+        for fight_ranking in rankings:
+            fight_id = fight_ranking["fightID"]
+            ret[fight_id] = {
+                "player_rankings": [],
+                "fight_ranking": {
+                    "speed_percentile": fight_ranking["speed"]["rankPercent"],
+                    "execution_percentile": fight_ranking["execution"]["rankPercent"],
+                }
+            }
+
+            for ranking in fight_ranking["roles"]["dps"]["characters"]:
+                ranking = {
+                    "name": ranking["name"],
+                    "dps": ranking["amount"],
+                    "rank_percentile": ranking["rankPercent"],
+                }
+                ret[fight_id]["player_rankings"].append(
+                    ranking
+                )
+
+        return ret
 
     def get_fight(self, encounter_name):
         for encounter in self._encounters:
@@ -74,12 +102,24 @@ class Report:
                 ]
                 assert combatant_info
 
+                fight_rankings = self._rankings[fight["id"]]
+                for player_ranking in fight_rankings["player_rankings"]:
+                    if player_ranking["name"] == self.source.name:
+                        fight_rankings = {
+                            "player_ranking": player_ranking,
+                            "fight_ranking": fight_rankings["fight_ranking"]
+                        }
+                        break
+                else:
+                    raise Exception("No rankings found for fight")
+
                 return Fight(
                     self,
                     encounter,
                     fight["startTime"],
                     fight["endTime"],
                     [event for event in self._events if fight["id"] == event["fight"]],
+                    fight_rankings,
                     combatant_info,
                 )
         else:
@@ -112,6 +152,7 @@ class Fight:
         start_time: int,
         end_time: int,
         events,
+        rankings,
         combatant_info,
     ):
         self._report = report
@@ -121,6 +162,7 @@ class Fight:
         self.start_time = 0
         self.end_time = end_time - start_time
         self._combatant_info_lookup = {c["sourceID"]: c for c in combatant_info}
+        self.rankings = rankings
 
         self.events = [self._normalize_event(event) for event in events]
         self._fix_cotg()

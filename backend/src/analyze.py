@@ -216,13 +216,6 @@ class Rune:
             return 0
         return max(0, timestamp - self.regen_time)
 
-    def copy(self):
-        obj = self.__class__(self.full_name, self.type)
-        obj.regen_time = self.regen_time
-        obj.is_death = self.is_death
-        obj.blood_tapped = self.blood_tapped
-        return obj
-
 
 class RuneTracker:
     def __init__(self):
@@ -314,7 +307,7 @@ class RuneTracker:
                 self.runes[i].refresh(timestamp)
 
     def add_event(self, event):
-        event["runes_before"] = self.serialize(event["timestamp"])
+        event["runes_before"] = self._serialize(event["timestamp"])
 
         if event["type"] == "removebuff" and event["ability"] == "Blood Tap":
             self.stop_blood_tap()
@@ -335,17 +328,12 @@ class RuneTracker:
             if event["ability"] == "Empower Rune Weapon":
                 self.erw(event["timestamp"])
 
-        event["runes"] = self.serialize(event["timestamp"])
-
-    def copy(self):
-        obj = self.__class__()
-        obj.runes = [rune.copy() for rune in self.runes]
-        return obj
+        event["runes"] = self._serialize(event["timestamp"])
 
     def print(self):
         console.print(f"* You drifted runes by a total of {self._rune_grace_wasted} ms")
 
-    def serialize(self, timestamp):
+    def _serialize(self, timestamp):
         return [
             {
                 "name": rune.get_name(),
@@ -413,6 +401,18 @@ class BuffTracker:
         s += " Had" if self._has_flask else " Missing"
         s += " Flask of Endless Rage"
         console.print(s)
+
+    def serialize(self):
+        return {
+            "potion_usage": {
+                "indicator": "success" if self._pots_used == 2 else "fail",
+                "message": f"{self._pots_used} Speed potions used"
+            },
+            "flask_usage": {
+                "indicator": "success" if self._has_flask else "fail",
+                "message": f"{'Had' if self._has_flask else 'Missing'} Flask of Endless Rage"
+            }
+        }
 
 
 class RPAnalyzer:
@@ -626,7 +626,7 @@ class HowlingBlastAnalyzer:
             )
         else:
             console.print(
-                "[green]✓[/green] You always used Howling Blast with rime or on multiple targets"
+                "[green]✓[/green] You always used Howling Blast with rime or on 3+ targets"
             )
 
 
@@ -714,7 +714,8 @@ class Analyzer:
         starting_auras = combatant_info["auras"]
 
         runes = RuneTracker()
-        table = EventsTable(self._has_rune_error())
+        has_rune_error = self._has_rune_error()
+        table = EventsTable(has_rune_error)
         buff_tracker = BuffTracker(
             {
                 "Unbreakable Armor": "UA",
@@ -762,6 +763,10 @@ class Analyzer:
                 "start_time": self._fight.start_time,
                 "end_time": self._fight.end_time,
                 "duration": self._fight.end_time - self._fight.start_time,
+                "rankings": self._fight.rankings,
+            },
+            "analysis": {
+                "has_rune_spend_error": has_rune_error,
             },
             "events": displayable_events,
         }

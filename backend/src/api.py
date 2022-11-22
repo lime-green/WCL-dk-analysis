@@ -23,7 +23,7 @@ class AnalyzeResponse(BaseModel):
     data: Dict
 
 
-@app.post("/analyze_fight")
+@app.get("/analyze_fight")
 async def analyze_fight(data: AnalyzeRequest):
     report = await fetch_report(
         data.report_code, data.character_name, data.encounter_name

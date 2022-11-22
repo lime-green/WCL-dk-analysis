@@ -82,6 +82,9 @@ class WCLClient:
         nextPageTimestamp
         data
       }
+      rankings(
+        encounterID: %(encounter_id)s
+      )
       combatantInfo: events(
         killType: Kills
         startTime: %(next_page_timestamp)s
@@ -106,8 +109,9 @@ class WCLClient:
             combatant_info = r["combatantInfo"]["data"]
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
+            rankings = r["rankings"]["data"]
 
-        return events, combatant_info
+        return events, combatant_info, rankings
 
     async def query(self, report_code, character, encounter_name):
         zone_query = (
@@ -148,13 +152,14 @@ class WCLClient:
         else:
             raise Exception("Encounter not found")
 
-        events, combatant_info = await self._fetch_events(
+        events, combatant_info, rankings = await self._fetch_events(
             report_code, source.id, encounter_id
         )
 
         return Report(
             source,
             events,
+            rankings,
             combatant_info,
             encounters,
             actors,

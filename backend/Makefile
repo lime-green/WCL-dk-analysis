@@ -49,4 +49,4 @@ requirements-dev.txt: pyproject.toml
 	$(VENV_ACTIVATE) && ${VENV_NAME}/bin/pip-compile --extra=dev --output-file=requirements-dev.txt pyproject.toml
 
 server: venv
-	$(VENV_ACTIVATE) && PYTHONPATH="$PYTHONPATH:src/backend" ${VENV_NAME}/bin/uvicorn api:app --reload
+	$(VENV_ACTIVATE) && PYTHONPATH="${PYTHONPATH}:src" ${VENV_NAME}/bin/uvicorn api:app --reload
