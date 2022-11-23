@@ -104,7 +104,7 @@ const Summary = () => {
     if (numDiseasesDropped > 0) {
       return (
         <div className={"diseases-dropped"}>
-          <i className="fa fa-times-circle red" aria-hidden="true"></i>
+          <i className="fa fa-times red" aria-hidden="true"></i>
           You dropped diseases{" "}
           <span className={"hl"}>{numDiseasesDropped}</span> times
         </div>
@@ -132,7 +132,7 @@ const Summary = () => {
     }
     return (
       <div className={"flask-usage"}>
-        <i className="fa fa-times-circle red" aria-hidden="true"></i>
+        <i className="fa fa-times red" aria-hidden="true"></i>
         You did not have a Flask of Endless Rage
       </div>
     );
@@ -198,7 +198,7 @@ const Summary = () => {
     }
     return (
       <div className={"howling-blast"}>
-        <i className="fa fa-times-circle red" aria-hidden="true"></i>
+        <i className="fa fa-times red" aria-hidden="true"></i>
         You used Howling Blast <span className={"hl"}>{numBadUsages}</span>{" "}
         times without Rime or on less than 3 targets
       </div>
@@ -219,7 +219,7 @@ const Summary = () => {
     }
     return (
       <div className={"potions"}>
-        <i className="fa fa-times-circle red" aria-hidden="true"></i>
+        <i className="fa fa-times red" aria-hidden="true"></i>
         You used <span className={"hl"}>{potionsUsed} of 2</span> Potions of
         Speed
       </div>
@@ -236,7 +236,7 @@ const Summary = () => {
         <div className={"windows"}>
           {windows.map((window, i) => {
             let icon = (
-              <i className="fa fa-times-circle red" aria-hidden="true" />
+              <i className="fa fa-times red" aria-hidden="true" />
             );
             if (window.num_actual === window.num_possible) {
               icon = <i className="fa fa-check green" aria-hidden="true" />;
@@ -257,7 +257,7 @@ const Summary = () => {
       );
     };
 
-    let icon = <i className="fa fa-times-circle red" aria-hidden="true" />;
+    let icon = <i className="fa fa-times red" aria-hidden="true" />;
     if (numActual === numPossible) {
       icon = <i className="fa fa-check green" aria-hidden="true" />;
     }

@@ -456,9 +456,10 @@ class RPAnalyzer(BaseAnalyzer):
 
 class UAAnalyzer(BaseAnalyzer):
     class Window:
-        def __init__(self, expected_oblits):
+        def __init__(self, expected_oblits, with_erw=False):
             self.oblits = 0
             self.expected_oblits = expected_oblits
+            self.with_erw = with_erw
 
         def __str__(self):
             s = (
@@ -467,7 +468,7 @@ class UAAnalyzer(BaseAnalyzer):
                 else "[red]x[/red] "
             )
             s += f"Hit {self.oblits} of {self.expected_oblits} obliterates"
-            if self.expected_oblits == 6:
+            if self.with_erw:
                 s += " (with ERW)"
             return s
 
@@ -485,6 +486,7 @@ class UAAnalyzer(BaseAnalyzer):
         elif self._window and not event.get("is_miss"):
             if event["ability"] == "Empower Rune Weapon":
                 self._window.expected_oblits = 6
+                self._window.with_erw = True
             if event["type"] == "cast" and event["ability"] == "Obliterate":
                 self._window.oblits += 1
 
@@ -519,7 +521,7 @@ class UAAnalyzer(BaseAnalyzer):
                         "indicator": "success"
                         if window.oblits == window.expected_oblits
                         else "fail",
-                        "with_erw": window.expected_oblits == 6,
+                        "with_erw": window.with_erw,
                         "num_actual": window.oblits,
                         "num_possible": window.expected_oblits,
                     }
