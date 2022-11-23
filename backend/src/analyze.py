@@ -284,7 +284,9 @@ class RuneTracker(BaseAnalyzer):
         unholy_spend = self._spend_runes(unholy, self.runes[4:6], timestamp)
 
         spent = blood_spend[0] and frost_spend[0] and unholy_spend[0]
-        rune_grace_wasted = blood_spend[1] + frost_spend[1] and unholy_spend[1]
+
+        # Note: we don't really care about blood runes drifting
+        rune_grace_wasted = frost_spend[1] + unholy_spend[1]
         return spent, rune_grace_wasted
 
     def blood_tap(self, timestamp: int):

@@ -93,7 +93,7 @@ const Summary = () => {
       <div className={"gcd-latency"}>
         <i className="fa fa-clock-o hl" aria-hidden="true"></i>
         Your average GCD delay was{" "}
-        <span className={color}>{averageLatency} ms</span>
+        <span className={color}>{averageLatency.toFixed(2)} ms</span>
       </div>
     );
   }, []);
@@ -142,23 +142,26 @@ const Summary = () => {
     const runeDriftMs = runeDrift.rune_drift_ms;
 
     let color = "green";
-    if (runeDrift > 7500) {
+    if (runeDriftMs > 15000) {
       color = "red";
-    } else if (runeDrift > 5000) {
+    } else if (runeDriftMs > 10000) {
       color = "yellow";
     }
+
+    const runeDriftSeconds = runeDriftMs / 1000
 
     return (
       <div className={"rune-drift"}>
         <i className="fa fa-clock-o hl" aria-hidden="true"></i>
-        You drifted runes by a total of{" "}
-        <span className={color}>{runeDriftMs} ms</span>
+        You drifted Obliterate runes by a total of{" "}
+        <span className={color}>{runeDriftSeconds.toFixed(2)} seconds</span>
       </div>
     );
   }, []);
 
   const formatKillingMachine = useCallback((killingMachine) => {
     const averageLatency = killingMachine.avg_latency;
+    const averageLatencySeconds = averageLatency / 1000
     const numUsed = killingMachine.num_used;
     const numTotal = killingMachine.num_total;
     let color = "green";
@@ -177,7 +180,7 @@ const Summary = () => {
           {numUsed} of {numTotal}
         </span>{" "}
         Killing Machine procs with an average delay of{" "}
-        <span className={color}>{averageLatency} ms</span>
+        <span className={color}>{averageLatencySeconds.toFixed(2)} seconds</span>
       </div>
     );
   }, []);
