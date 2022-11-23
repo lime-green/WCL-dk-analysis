@@ -423,7 +423,7 @@ class Fight:
                 normalized_event["rune_cost"] = None
 
         normalized_event["modifies_runes"] = False
-        if normalized_event.get("rune_cost") or (normalized_event["type"] == "cast" and normalized_event["ability"] in ("Blood Tap", "Empower Rune Weapon")):
+        if normalized_event.get("rune_cost") or normalized_event.get("ability") in ("Blood Tap", "Empower Rune Weapon"):
             normalized_event["modifies_runes"] = True
 
         if "waste" in event and event["resourceChangeType"] == 6:
