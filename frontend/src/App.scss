@@ -1,0 +1,202 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+table {
+  border-collapse: collapse;
+  line-height: 25px;
+}
+
+th,
+td {
+  padding: 0;
+  padding-left: 5px;
+  padding-right: 10px;
+  border: 1px solid #3b3939;
+  border-style: inset;
+  border-width: thin;
+}
+
+th {
+  background-color: #380404;
+}
+
+td {
+  font-size: 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+tr:nth-child(odd) {
+  background-color: #0f0f0f;
+}
+
+tr:nth-child(even) {
+  background-color: #1a1919;
+}
+
+tr:hover {
+  background-color: #213547;
+}
+
+.gold {
+  color: #e5cc80;
+}
+
+.pink {
+  color: #f48cba;
+}
+
+.orange {
+  color: #ff8000;
+}
+
+.purple {
+  color: #a335ee;
+}
+
+.blue {
+  color: #0070dd;
+}
+
+.green {
+  color: #1eff00;
+}
+
+.grey {
+  color: #9d9d9d;
+}
+
+.runic-power {
+  color: lightblue;
+}
+
+.summary-line {
+  display: flex;
+  width: 200px;
+
+  .hl {
+    flex-grow: 1;
+    text-align: right;
+    margin-right: 5px;
+  }
+}
+
+.hl {
+  color: #46c5ff;
+}
+
+.fight-analysis {
+  font-size: 14px;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  width: 100%;
+
+  .fa {
+    margin-right: 5px;
+    width: 20px;
+    text-align: center;
+  }
+
+  > div {
+    margin-bottom: 2px;
+  }
+
+  h3 {
+    color: #e5cc80;
+  }
+}
+
+.rune-cd {
+  filter: brightness(40%) grayscale(1);
+}
+
+.analysis-summary h2 {
+  text-align: center;
+  color: #e5cc80;
+}
+
+.events-table {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.analysis-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-direction: column;
+}
+
+.windows {
+  margin-left: 20px;
+}
+
+.ability,
+.buffs,
+.procs-used {
+  display: flex;
+  align-items: center;
+}
+
+td img {
+  padding-right: 5px;
+}
+
+td .rune {
+  padding-right: 1px;
+}
+
+.timestamp {
+  color: darkgrey;
+}
+
+.runes {
+  display: inline-block;
+}
+
+.runes:not(:last-child) {
+  padding-right: 15px;
+}
+
+.red {
+  color: red;
+}
+
+.yellow {
+  color: yellow;
+}
+
+.debuff-drops,
+.ability-miss {
+  background: #3b0610 !important;
+}
+
+.buff-drops {
+  color: darkgrey;
+}
+
+.filler-cast {
+  padding-left: 20px;
+}
+
+.ability-type-0 {
+  color: #46c5ff;
+}
+
+.ability-type-1 {
+  color: #e5cc80;
+}
+
+.ability-type-4 {
+  color: #eb4561;
+}
+
+.ability-type-16 {
+  color: #4a80ff;
+}
+
+.ability-type-32 {
+  color: #b8a8f0;
+}

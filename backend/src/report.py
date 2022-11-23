@@ -55,9 +55,9 @@ class Report:
         self._events = events
         self._rankings = self._parse_rankings(rankings)
         self._combatant_info = combatant_info
-        self._encounters = [
-            Encounter(encounter["id"], encounter["name"]) for encounter in encounters
-        ]
+        self._encounters = {
+            encounter["id"]: Encounter(encounter["id"], encounter["name"]) for encounter in encounters
+        }
         self._actors = actors
         self._abilities = abilities
         self._fights = fights
@@ -87,16 +87,10 @@ class Report:
 
         return ret
 
-    def get_fight(self, encounter_name):
-        for encounter in self._encounters:
-            if encounter.name == encounter_name:
-                break
-        else:
-            raise Exception(f"No encounter with name: {encounter_name}")
-
+    def get_fight(self, fight_id):
         for fight in self._fights:
             # Assumes one successful fight per encounter
-            if fight["encounterID"] == encounter.id:
+            if fight["id"] == fight_id:
                 combatant_info = [
                     c for c in self._combatant_info if c["fight"] == fight["id"]
                 ]
@@ -115,7 +109,7 @@ class Report:
 
                 return Fight(
                     self,
-                    encounter,
+                    self._encounters[fight["encounterID"]],
                     fight["startTime"],
                     fight["endTime"],
                     [event for event in self._events if fight["id"] == event["fight"]],
@@ -123,7 +117,7 @@ class Report:
                     combatant_info,
                 )
         else:
-            raise Exception(f"No fight found for encounter: {encounter_name}")
+            raise Exception(f"No fight found with ID: {fight_id}")
 
     def get_actor_name(self, actor_id: int):
         for actor in self._actors:
@@ -142,6 +136,29 @@ class Report:
             if ability_id == 393387:
                 return "Leader of the Pack"
             raise Exception(f"No ability name found for id: {ability_id}")
+
+    def get_ability_icon(self, ability_id: int):
+        if ability_id == 51271:
+            return "https://wow.zamimg.com/images/wow/icons/large/inv_armor_helm_plate_naxxramas_raidwarrior_c_01.jpg"
+        if ability_id == 50842:
+            return "https://wow.zamimg.com/images/wow/icons/large/spell_shadow_plaguecloud.jpg"
+
+        for ability in self._abilities:
+            if ability["gameID"] == ability_id:
+                return f'https://wow.zamimg.com/images/wow/icons/large/{ability["icon"]}'
+        else:
+            if ability_id in (28878, 6562):
+                return "https://wow.zamimg.com/images/wow/icons/large/inv_helmet_21.jpg"
+            if ability_id == 393387:
+                return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_unyeildingstamina.jpg"
+            raise Exception(f"No ability icon found for id: {ability_id}")
+
+    def get_ability_type(self, ability_id: int):
+        for ability in self._abilities:
+            if ability["gameID"] == ability_id:
+                return int(ability["type"])
+        else:
+            raise Exception(f"No ability icon found for id: {ability_id}")
 
 
 class Fight:
@@ -179,6 +196,7 @@ class Fight:
         for aura in combatant_info["auras"]:
             if "name" not in aura:
                 aura["name"] = self._report.get_ability_name(aura["ability"])
+            aura["ability_icon"] = self._report.get_ability_icon(aura["ability"])
         return combatant_info
 
     def _add_proc_consumption(self):
@@ -344,6 +362,8 @@ class Fight:
                     "timestamp": event["timestamp"],
                     "ability": event["ability"],
                     "abilityGameID": event["abilityGameID"],
+                    "ability_icon": event["ability_icon"],
+                    "ability_type": event["ability_type"],
                     "type": event["type"],
                     "source": event["source"],
                     "sourceID": event["sourceID"],
@@ -352,6 +372,7 @@ class Fight:
                     "rune_cost": event["rune_cost"],
                     "runic_power": event["runic_power"],
                     "runic_power_waste": event.get("runic_power_waste", 0),
+                    "modifies_runes": event["modifies_runes"],
                     "num_targets": event.get("num_targets", 0),
                     **extra,
                 }
@@ -362,6 +383,9 @@ class Fight:
         normalized_event = {**event}
         normalized_event["timestamp"] = event["timestamp"] - self._global_start_time
 
+        if "abilityGameID" in event:
+            normalized_event["ability_icon"] = self._report.get_ability_icon(event["abilityGameID"]),
+            normalized_event["ability_type"] = self._report.get_ability_type(event["abilityGameID"])
         if "sourceID" in event:
             normalized_event["source"] = self._report.get_actor_name(
                 normalized_event["sourceID"]
@@ -397,6 +421,11 @@ class Fight:
                     normalized_event["rune_cost"]["unholy"] += 1
             if normalized_event.get("rune_cost") == NO_RUNES:
                 normalized_event["rune_cost"] = None
+
+        normalized_event["modifies_runes"] = False
+        if normalized_event.get("rune_cost") or (normalized_event["type"] == "cast" and normalized_event["ability"] in ("Blood Tap", "Empower Rune Weapon")):
+            normalized_event["modifies_runes"] = True
+
         if "waste" in event and event["resourceChangeType"] == 6:
             normalized_event["runic_power_waste"] = event["waste"] * 10
 

@@ -62,7 +62,7 @@ class WCLClient:
 
         return (await self._query(metadata_query))["data"]
 
-    async def _fetch_events(self, report_code, source_id, encounter_id):
+    async def _fetch_events(self, report_code, fight_id, source_id):
         events = []
         combatant_info = []
         next_page_timestamp = 0
@@ -73,17 +73,17 @@ class WCLClient:
       events(
         killType: Kills
         startTime: %(next_page_timestamp)s
-        encounterID: %(encounter_id)s
         endTime: 100000000000
         sourceID: %(source_id)s
         useActorIDs: true
         includeResources: true
+        fightIDs: [%(fight_id)s]
       ) {
         nextPageTimestamp
         data
       }
       rankings(
-        encounterID: %(encounter_id)s
+        fightIDs: [%(fight_id)s]
       )
       combatantInfo: events(
         killType: Kills
@@ -103,7 +103,7 @@ class WCLClient:
                 report_code=report_code,
                 next_page_timestamp=next_page_timestamp,
                 source_id=source_id,
-                encounter_id=encounter_id,
+                fight_id=fight_id,
             )
             r = (await self._query(events_query))["data"]["reportData"]["report"]
             combatant_info = r["combatantInfo"]["data"]
@@ -113,7 +113,7 @@ class WCLClient:
 
         return events, combatant_info, rankings
 
-    async def query(self, report_code, character, encounter_name):
+    async def query(self, report_id, fight_id, source_id):
         zone_query = (
             """
 {
@@ -127,33 +127,26 @@ class WCLClient:
     }
 }
         """
-            % report_code
+            % report_id
         )
 
         zone_id = (await self._query(zone_query))["data"]["reportData"]["report"][
             "zone"
         ]["id"]
-        metadata = await self._fetch_metadata(report_code, zone_id)
+        metadata = await self._fetch_metadata(report_id, zone_id)
         report_metadata = metadata["reportData"]["report"]
         encounters = metadata["worldData"]["zone"]["encounters"]
         actors = report_metadata["masterData"]["actors"]
 
         for actor in actors:
-            if actor["type"] == "Player" and actor["name"] == character:
+            if actor["type"] == "Player" and actor["id"] == source_id:
                 source = Source(actor["id"], actor["name"])
                 break
         else:
             raise Exception("Character not found")
 
-        for encounter in encounters:
-            if encounter["name"] == encounter_name:
-                encounter_id = encounter["id"]
-                break
-        else:
-            raise Exception("Encounter not found")
-
         events, combatant_info, rankings = await self._fetch_events(
-            report_code, source.id, encounter_id
+            report_id, fight_id, source_id
         )
 
         return Report(
@@ -166,6 +159,20 @@ class WCLClient:
             report_metadata["masterData"]["abilities"],
             report_metadata["fights"],
         )
+
+    async def get_ability_icon(self, ability_id):
+        query = """
+{
+	gameData {
+		ability(id: %s) {
+			id
+			icon
+			name
+		}
+	}
+}	
+""" % ability_id
+        return (await self._query(query))["data"]["gameData"]
 
     async def _query(self, query):
         session = await self.session()
@@ -194,10 +201,15 @@ class WCLClient:
         return self._session
 
 
-async def fetch_report(report_code, character, encounter) -> Report:
-    client = WCLClient(
+def get_client():
+    return WCLClient(
         "***REMOVED***",
         "***REMOVED***",
     )
+
+
+async def fetch_report(report_id, fight_id, source_id) -> Report:
+    client = get_client()
+
     async with client:
-        return await client.query(report_code, character, encounter)
+        return await client.query(report_id, fight_id, source_id)

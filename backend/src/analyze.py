@@ -11,10 +11,20 @@ from report import Fight, Report
 console = Console()
 
 
+class BaseAnalyzer:
+    def add_event(self, event):
+        pass
+
+    def print(self):
+        pass
+
+    def report(self):
+        return {}
+
+
 class EventsTable:
     def __init__(self, has_rune_error):
         self._events = []
-        self._last_event = None
         self._has_rune_error = has_rune_error
 
         table = Table(show_header=True, header_style="bold magenta")
@@ -54,21 +64,19 @@ class EventsTable:
         notes = []
 
         time = self._format_timestamp(event["timestamp"])
-        if self._last_event is None:
-            offset = event["timestamp"]
-        else:
-            offset = event["timestamp"] - self._last_event["timestamp"]
 
-        if offset > 2000:
-            offset_color = "red"
-        elif offset > 1600:
-            offset_color = "yellow1"
-        else:
-            offset_color = "green3"
-        offset_pretty = self._format_timestamp(offset, include_minutes=False)
+        if "gcd_offset" in event:
+            offset = event["gcd_offset"]
+            if offset > 2000:
+                offset_color = "red"
+            elif offset > 1600:
+                offset_color = "yellow1"
+            else:
+                offset_color = "green3"
+            offset_pretty = self._format_timestamp(offset, include_minutes=False)
 
-        if event.get("has_gcd"):
-            time = f"{time} [{offset_color}](+{offset_pretty})[/{offset_color}]"
+            if event.get("has_gcd"):
+                time = f"{time} [{offset_color}](+{offset_pretty})[/{offset_color}]"
 
         ability = event["ability"]
         if event["ability"] == "Obliterate":
@@ -126,7 +134,7 @@ class EventsTable:
         style = (
             Style(bgcolor="grey15")
             if (
-                "Unbreakable Armor" in event["buffs"]
+                "UA" in event["buff_short_names"]
                 or event["ability"] == "Unbreakable Armor"
             )
             else None
@@ -136,9 +144,6 @@ class EventsTable:
             *row,
             style=style,
         )
-
-        if event["type"] == "cast" and event["has_gcd"]:
-            self._last_event = event
 
     def print(self):
         console.print(self._table)
@@ -217,7 +222,7 @@ class Rune:
         return max(0, timestamp - self.regen_time)
 
 
-class RuneTracker:
+class RuneTracker(BaseAnalyzer):
     def __init__(self):
         self.runes = [
             Rune("Blood1", "Blood"),
@@ -343,51 +348,56 @@ class RuneTracker:
             for rune in self.runes
         ]
 
+    def report(self):
+        return {
+            "rune_drift": {
+                "indicator": "info",
+                "rune_drift_ms": self._rune_grace_wasted,
+            }
+        }
 
-class BuffTracker:
+
+class BuffTracker(BaseAnalyzer):
     def __init__(self, buffs_to_track, starting_auras):
         self._buffs_to_track = buffs_to_track
         self._active = {}  # preserves insertion order
         self._has_flask = False
         self._pots_used = 0
-        self.add_starting_auras(starting_auras)
+        self._add_starting_auras(starting_auras)
 
-    def has(self, buff):
-        return buff in self._active
-
-    def add(self, buff):
-        if buff == "Flask of Endless Rage":
+    def _add(self, id, name, icon):
+        if name == "Flask of Endless Rage":
             self._has_flask = True
 
-        if buff == "Speed":
+        if name == "Speed":
             self._pots_used += 1
 
-        if buff in self._buffs_to_track:
-            self._active[buff] = True
+        if name in self._buffs_to_track:
+            self._active[name] = {"abilityGameID": id, "ability": name, "ability_icon": icon}
 
-    def remove(self, buff):
-        if buff == "Flask of Endless Rage":
+    def _remove(self, name):
+        if name == "Flask of Endless Rage":
             self._has_flask = False
 
-        if buff in self._buffs_to_track:
-            if buff in self._active:
-                del self._active[buff]
+        if name in self._buffs_to_track:
+            if name in self._active:
+                del self._active[name]
 
     def get_buff_short_names(self):
         return [self._buffs_to_track[buff] for buff in self._active]
 
     def add_event(self, event):
         if event["type"] == "applybuff":
-            self.add(event["ability"])
+            self._add(event["abilityGameID"], event["ability"], event["ability_icon"])
         if event["type"] == "removebuff":
-            self.remove(event["ability"])
-        event["buffs"] = set(self._active)
+            self._remove(event["ability"])
+        event["buffs"] = list(self._active.values())
         event["buff_short_names"] = self.get_buff_short_names()
 
-    def add_starting_auras(self, starting_auras):
+    def _add_starting_auras(self, starting_auras):
         for aura in starting_auras:
             if "name" in aura:
-                self.add(aura["name"])
+                self._add(aura["ability"], aura["name"], aura["ability_icon"])
 
     def print(self):
         red = "[red]x[/red]"
@@ -402,20 +412,20 @@ class BuffTracker:
         s += " Flask of Endless Rage"
         console.print(s)
 
-    def serialize(self):
+    def report(self):
         return {
             "potion_usage": {
                 "indicator": "success" if self._pots_used == 2 else "fail",
-                "message": f"{self._pots_used} Speed potions used"
+                "potions_used": self._pots_used,
             },
             "flask_usage": {
                 "indicator": "success" if self._has_flask else "fail",
-                "message": f"{'Had' if self._has_flask else 'Missing'} Flask of Endless Rage"
+                "has_flask": self._has_flask,
             }
         }
 
 
-class RPAnalyzer:
+class RPAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._count = 0
         self._sum = 0
@@ -430,8 +440,17 @@ class RPAnalyzer:
             f"* Over-capped RP {self._count} times with a total of {self._sum} RP wasted"
         )
 
+    def report(self):
+        return {
+            "runic_power": {
+                "indicator": "info",
+                "overcap_times": self._count,
+                "overcap_sum": self._sum,
+            }
+        }
 
-class UAAnalyzer:
+
+class UAAnalyzer(BaseAnalyzer):
     class Window:
         def __init__(self, expected_oblits):
             self.oblits = 0
@@ -465,24 +484,44 @@ class UAAnalyzer:
             if event["type"] == "cast" and event["ability"] == "Obliterate":
                 self._window.oblits += 1
 
-    def print(self):
-        possible_ua_windows = 1 + (self._fight_end_time - 3000) // 60000
+    @property
+    def possible_ua_windows(self):
+        return 1 + (self._fight_end_time - 3000) // 60000
 
+    def print(self):
         color = (
             "[green]✓[/green]"
-            if possible_ua_windows == len(self._windows)
+            if self.possible_ua_windows == len(self._windows)
             else "[red]x[/red]"
         )
         console.print(
             f"{color} You used UA {len(self._windows)}"
-            f" out of a possible {possible_ua_windows} times"
+            f" out of a possible {self.possible_ua_windows} times"
         )
 
         for window in self._windows:
             console.print(f"\t - {window}")
 
+    def report(self):
+        return {
+            "unbreakable_armor": {
+                "indicator": "success" if self.possible_ua_windows == len(self._windows) else "fail",
+                "num_possible": self.possible_ua_windows,
+                "num_actual": len(self._windows),
+                "windows": [
+                    {
+                        "indicator": "success" if window.oblits == window.expected_oblits else "fail",
+                        "with_erw": window.expected_oblits == 6,
+                        "num_actual": window.oblits,
+                        "num_possible": window.expected_oblits,
+                    }
+                    for window in self._windows
+                ],
+            }
+        }
 
-class KMAnalyzer:
+
+class KMAnalyzer(BaseAnalyzer):
     class Window:
         def __init__(self, timestamp):
             self.gained_timestamp = timestamp
@@ -506,26 +545,38 @@ class KMAnalyzer:
             self._window = None
 
     def print(self):
+        report = self.report()["killing_machine"]
+
+        if report["num_total"]:
+            console.print(
+                f"* You used {report['num_used']} of {report['num_total']} Killing Machine procs"
+            )
+            console.print(
+                f"* Your average Killing Machine proc usage delay was {report['avg_latency']:.2f} ms"
+            )
+        else:
+            console.print("* You did not use any Killing Machine procs")
+
+    def report(self):
         used_windows = [window for window in self._windows if window.used_timestamp]
         num_windows = len(self._windows)
         num_used = len(used_windows)
         latencies = [
             window.used_timestamp - window.gained_timestamp for window in used_windows
         ]
+        avg_latency = sum(latencies) / len(latencies) if latencies else 0
 
-        if latencies:
-            avg_latency = sum(latencies) / len(latencies)
-            console.print(
-                f"* You used {num_used} of {num_windows} Killing Machine procs"
-            )
-            console.print(
-                f"* Your average Killing Machine proc usage delay was {avg_latency:.2f} ms"
-            )
-        else:
-            console.print("* You did not use any Killing Machine procs")
+        return {
+            "killing_machine": {
+                "indicator": "info",
+                "num_used": num_used,
+                "num_total": num_windows,
+                "avg_latency": avg_latency,
+            },
+        }
 
 
-class GCDAnalyzer:
+class GCDAnalyzer(BaseAnalyzer):
     NO_GCD = {
         "Unbreakable Armor",
         "Blood Tap",
@@ -535,21 +586,32 @@ class GCDAnalyzer:
         "Empower Rune Weapon",
         "Cobalt Frag Bomb",
         "Hyperspeed Acceleration",
+        "Blood Fury",
+        "Berserking",
     }
 
     def __init__(self):
         self._gcds = []
+        self._last_event = None
 
     def add_event(self, event):
         if not event["type"] == "cast":
             return
 
+        if self._last_event is None:
+            offset = event["timestamp"]
+        else:
+            offset = event["timestamp"] - self._last_event["timestamp"]
+
+        event["gcd_offset"] = offset
         event["has_gcd"] = event["ability"] not in self.NO_GCD
 
         if event["has_gcd"]:
             self._gcds.append(event["timestamp"])
+            self._last_event = event
 
-    def print(self):
+    @property
+    def latencies(self):
         last_timestamp = None
         latencies = []
 
@@ -565,15 +627,31 @@ class GCDAnalyzer:
                 latencies.append(latency)
             last_timestamp = timestamp
 
-        average_latency = sum(latencies) / len(latencies)
+        return latencies
+
+    def print(self):
+        latencies = self.latencies
+        average_latency = sum(latencies) / len(latencies) if latencies else 0
         console.print(f"* Your average GCD usage delay was {average_latency:.2f} ms")
 
+    def report(self):
+        latencies = self.latencies
+        average_latency = sum(latencies) / len(latencies) if latencies else 0
 
-class DiseaseAnalyzer:
+        return {
+            "gcd_latency": {
+                "indicator": "info",
+                "average_latency": average_latency,
+            }
+        }
+
+
+class DiseaseAnalyzer(BaseAnalyzer):
     DISEASE_DURATION_MS = 15000
 
-    def __init__(self):
+    def __init__(self, fight_end_time):
         self._dropped_diseases_timestamp = []
+        self._fight_end_time = fight_end_time
 
     def add_event(self, event):
         if event["type"] == "removedebuff" and event["ability"] in (
@@ -582,26 +660,40 @@ class DiseaseAnalyzer:
         ):
             self._dropped_diseases_timestamp.append(event["timestamp"])
 
-    def print(self):
+    @property
+    def num_diseases_dropped(self):
         num_diseases_dropped = 0
         last_timestamp = None
 
         for timestamp in self._dropped_diseases_timestamp:
+            # Dropping them at the end of the fight is fine
+            if self._fight_end_time - timestamp < 10000:
+                continue
             if last_timestamp is None:
                 num_diseases_dropped += 1
             elif timestamp - last_timestamp > self.DISEASE_DURATION_MS:
                 num_diseases_dropped += 1
             last_timestamp = timestamp
+        return num_diseases_dropped
 
-        if num_diseases_dropped:
+    def print(self):
+        if self.num_diseases_dropped:
             console.print(
-                f"[red]x[/red] You dropped diseases {num_diseases_dropped} times"
+                f"[red]x[/red] You dropped diseases {self.num_diseases_dropped} times"
             )
         else:
             console.print("[green]✓[/green] You did not drop diseases")
 
+    def report(self):
+        return {
+            "diseases_dropped": {
+                "indicator": "success" if self.num_diseases_dropped == 0 else "fail",
+                "num_diseases_dropped": self.num_diseases_dropped,
+            }
+        }
 
-class HowlingBlastAnalyzer:
+
+class HowlingBlastAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._bad_usages = 0
 
@@ -628,6 +720,33 @@ class HowlingBlastAnalyzer:
             console.print(
                 "[green]✓[/green] You always used Howling Blast with rime or on 3+ targets"
             )
+
+    def report(self):
+        return {
+            "howling_blast_bad_usages": {
+                "indicator": "success" if not self._bad_usages else "fail",
+                "num_bad_usages": self._bad_usages,
+            }
+        }
+
+
+class CoreAbilities(BaseAnalyzer):
+    CORE_ABILITIES = {
+        "Icy Touch",
+        "Plague Strike",
+        "Unbreakable Armor",
+        "Obliterate",
+        "Pestilence",
+        "Howling Blast",
+        "Blood Strike",
+    }
+
+    def add_event(self, event):
+        if event["type"] == "cast":
+            if event["ability"] in self.CORE_ABILITIES:
+                event["is_core_cast"] = True
+            else:
+                event["is_core_cast"] = False
 
 
 class Analyzer:
@@ -739,8 +858,9 @@ class Analyzer:
             RPAnalyzer(),
             UAAnalyzer(self._fight.end_time),
             buff_tracker,
-            DiseaseAnalyzer(),
+            DiseaseAnalyzer(self._fight.end_time),
             HowlingBlastAnalyzer(),
+            CoreAbilities(),
         ]
 
         for event in self._events:
@@ -753,8 +873,11 @@ class Analyzer:
             table.add_event(event)
         table.print()
 
+        analysis = {"has_rune_spend_error": has_rune_error}
+
         for analyzer in analyzers:
             analyzer.print()
+            analysis.update(**analyzer.report())
 
         return {
             "fight_metadata": {
@@ -765,59 +888,12 @@ class Analyzer:
                 "duration": self._fight.end_time - self._fight.start_time,
                 "rankings": self._fight.rankings,
             },
-            "analysis": {
-                "has_rune_spend_error": has_rune_error,
-            },
+            "analysis": analysis,
             "events": displayable_events,
         }
 
 
-def analyze(report: Report, encounter: str):
-    fight = report.get_fight(encounter)
+def analyze(report: Report, fight_id: int):
+    fight = report.get_fight(fight_id)
     analyzer = Analyzer(fight)
     return analyzer.analyze()
-
-
-# report_code = "9Cp8zD1KtMfNQhPZ"
-# encounter = "Heigan the Unclean"
-# character = "Ennthoz"
-
-# report_code = "yZCw8mhdtF6H3X9T"
-# encounter = "Patchwerk"
-# character = "Launched"
-
-report_code = "hpZnwjfbMC8Gyz2q"
-encounter = "Anub'Rekhan"
-character = "Sails"
-
-# report_code = "kYHfBd3wqmVZt7hx"
-# encounter = "Patchwerk"
-# character = "Selitos"
-
-# report_code = "3fprXWKHBxkPynqA"
-# encounter = "Patchwerk"
-# character = "Km"
-
-# report_code = "g934AyzjwZLp1rha"
-# encounter = "Patchwerk"
-# character = "Sails"
-
-# Leeway issue (too little?)
-# report_code = "g934AyzjwZLp1rha"
-# character = "Coomroom"
-
-# Leeway issue (too much):
-# report_code = "vryQC8gMZ9Bb43fK"
-# character = "Sammarah"
-# encounter = "Patchwerk"
-
-
-if __name__ == "__main__":
-
-    async def run():
-        report = await fetch_report(report_code, character, encounter)
-        analyze(report, encounter)
-
-    import asyncio
-
-    asyncio.run(run())
