@@ -142,9 +142,9 @@ const Summary = () => {
     const runeDriftMs = runeDrift.rune_drift_ms;
 
     let color = "green";
-    if (runeDriftMs > 15000) {
+    if (runeDriftMs > 10000) {
       color = "red";
-    } else if (runeDriftMs > 10000) {
+    } else if (runeDriftMs > 5000) {
       color = "yellow";
     }
 

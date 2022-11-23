@@ -1,4 +1,3 @@
-from collections import defaultdict
 from dataclasses import dataclass
 
 
@@ -56,7 +55,8 @@ class Report:
         self._rankings = self._parse_rankings(rankings)
         self._combatant_info = combatant_info
         self._encounters = {
-            encounter["id"]: Encounter(encounter["id"], encounter["name"]) for encounter in encounters
+            encounter["id"]: Encounter(encounter["id"], encounter["name"])
+            for encounter in encounters
         }
         self._actors = actors
         self._abilities = abilities
@@ -72,7 +72,7 @@ class Report:
                 "fight_ranking": {
                     "speed_percentile": fight_ranking["speed"]["rankPercent"],
                     "execution_percentile": fight_ranking["execution"]["rankPercent"],
-                }
+                },
             }
 
             for ranking in fight_ranking["roles"]["dps"]["characters"]:
@@ -81,9 +81,7 @@ class Report:
                     "dps": ranking["amount"],
                     "rank_percentile": ranking["rankPercent"],
                 }
-                ret[fight_id]["player_rankings"].append(
-                    ranking
-                )
+                ret[fight_id]["player_rankings"].append(ranking)
 
         return ret
 
@@ -101,7 +99,7 @@ class Report:
                     if player_ranking["name"] == self.source.name:
                         fight_rankings = {
                             "player_ranking": player_ranking,
-                            "fight_ranking": fight_rankings["fight_ranking"]
+                            "fight_ranking": fight_rankings["fight_ranking"],
                         }
                         break
                 else:
@@ -145,7 +143,9 @@ class Report:
 
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
-                return f'https://wow.zamimg.com/images/wow/icons/large/{ability["icon"]}'
+                return (
+                    f'https://wow.zamimg.com/images/wow/icons/large/{ability["icon"]}'
+                )
         else:
             if ability_id in (28878, 6562):
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_helmet_21.jpg"
@@ -384,8 +384,12 @@ class Fight:
         normalized_event["timestamp"] = event["timestamp"] - self._global_start_time
 
         if "abilityGameID" in event:
-            normalized_event["ability_icon"] = self._report.get_ability_icon(event["abilityGameID"]),
-            normalized_event["ability_type"] = self._report.get_ability_type(event["abilityGameID"])
+            normalized_event["ability_icon"] = (
+                self._report.get_ability_icon(event["abilityGameID"]),
+            )
+            normalized_event["ability_type"] = self._report.get_ability_type(
+                event["abilityGameID"]
+            )
         if "sourceID" in event:
             normalized_event["source"] = self._report.get_actor_name(
                 normalized_event["sourceID"]
@@ -423,7 +427,10 @@ class Fight:
                 normalized_event["rune_cost"] = None
 
         normalized_event["modifies_runes"] = False
-        if normalized_event.get("rune_cost") or normalized_event.get("ability") in ("Blood Tap", "Empower Rune Weapon"):
+        if normalized_event.get("rune_cost") or normalized_event.get("ability") in (
+            "Blood Tap",
+            "Empower Rune Weapon",
+        ):
             normalized_event["modifies_runes"] = True
 
         if "waste" in event and event["resourceChangeType"] == 6:

@@ -4,7 +4,6 @@ from rich.console import Console
 from rich.table import Table
 from rich.style import Style
 
-from client import fetch_report
 from report import Fight, Report
 
 
@@ -256,9 +255,8 @@ class RuneTracker(BaseAnalyzer):
             if spent == num:
                 break
             if rune.can_spend_death(timestamp):
-                rune_grace_wasted += rune.spend_death(
-                    timestamp, is_same_type=(rune.type == rune_type)
-                )[1]
+                # Ignore death rune_grace_wasted
+                rune.spend_death(timestamp, is_same_type=(rune.type == rune_type))
                 spent += 1
 
                 # This handles the case where we use a death rune for a spell
@@ -375,7 +373,11 @@ class BuffTracker(BaseAnalyzer):
             self._pots_used += 1
 
         if name in self._buffs_to_track:
-            self._active[name] = {"abilityGameID": id, "ability": name, "ability_icon": icon}
+            self._active[name] = {
+                "abilityGameID": id,
+                "ability": name,
+                "ability_icon": icon,
+            }
 
     def _remove(self, name):
         if name == "Flask of Endless Rage":
@@ -423,7 +425,7 @@ class BuffTracker(BaseAnalyzer):
             "flask_usage": {
                 "indicator": "success" if self._has_flask else "fail",
                 "has_flask": self._has_flask,
-            }
+            },
         }
 
 
@@ -507,12 +509,16 @@ class UAAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "unbreakable_armor": {
-                "indicator": "success" if self.possible_ua_windows == len(self._windows) else "fail",
+                "indicator": "success"
+                if self.possible_ua_windows == len(self._windows)
+                else "fail",
                 "num_possible": self.possible_ua_windows,
                 "num_actual": len(self._windows),
                 "windows": [
                     {
-                        "indicator": "success" if window.oblits == window.expected_oblits else "fail",
+                        "indicator": "success"
+                        if window.oblits == window.expected_oblits
+                        else "fail",
                         "with_erw": window.expected_oblits == 6,
                         "num_actual": window.oblits,
                         "num_possible": window.expected_oblits,

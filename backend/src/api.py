@@ -29,10 +29,10 @@ class AnalyzeResponse(BaseModel):
 
 
 @app.get("/analyze_fight")
-async def analyze_fight(response: Response, report_id: str, fight_id: int, source_id: int):
-    report = await fetch_report(
-        report_id, fight_id, source_id
-    )
+async def analyze_fight(
+    response: Response, report_id: str, fight_id: int, source_id: int
+):
+    report = await fetch_report(report_id, fight_id, source_id)
     loop = asyncio.get_running_loop()
     events = await loop.run_in_executor(
         ProcessPoolExecutor(), functools.partial(analyze, report, fight_id)

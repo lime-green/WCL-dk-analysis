@@ -161,17 +161,21 @@ class WCLClient:
         )
 
     async def get_ability_icon(self, ability_id):
-        query = """
+        query = (
+            """
 {
-	gameData {
-		ability(id: %s) {
-			id
-			icon
-			name
-		}
-	}
-}	
-""" % ability_id
+  gameData {
+    ability(id: %s) {
+      id
+      icon
+      name
+    }
+  }
+}
+
+"""
+            % ability_id
+        )
         return (await self._query(query))["data"]["gameData"]
 
     async def _query(self, query):
