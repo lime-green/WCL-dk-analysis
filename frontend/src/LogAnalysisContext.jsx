@@ -20,7 +20,7 @@ export const LogAnalysisContextProvider = ({ children }) => {
     queryKey: ["analyze", source_id, fight_id, report_id],
     queryFn: () => {
       if (!source_id || !fight_id || !report_id) {
-        throw Error("Missing required parameters");
+        return Promise.reject("Missing required parameters");
       }
 
       const url = `${ANALYSIS_URL}?${new URLSearchParams({
@@ -28,7 +28,8 @@ export const LogAnalysisContextProvider = ({ children }) => {
         fight_id,
         report_id,
       })}`;
-      return fetch(url)
+      return new Promise(resolve => setTimeout(resolve, 500))
+        .then(() => fetch(url))
         .then((res) => res.json())
         .then((json) => json.data);
     },

@@ -1,33 +1,62 @@
 const buttonId = "dk-analyze-btn"
 const iframeId = "dk-analyze-iframe"
+let currentParams = null
 
+function isEqual(obj1, obj2) {
+    var props1 = Object.getOwnPropertyNames(obj1);
+    var props2 = Object.getOwnPropertyNames(obj2);
+
+    if (props1.length !== props2.length) {
+        return false;
+    }
+    for (let i = 0; i < props1.length; i++) {
+        let val1 = obj1[props1[i]];
+        let val2 = obj2[props1[i]];
+        let isObjects = isObject(val1) && isObject(val2);
+        if (isObjects && !isEqual(val1, val2) || !isObjects && val1 !== val2) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isObject(object) {
+  return object != null && typeof object === 'object';
+}
 
 function init() {
   const url = window.location.href
 
-  const i = url.indexOf("fight=")
-  if (i < 0) {
-    console.log("no fight")
+  if (url.indexOf("fight=") < 0) {
     hideButton()
     removeIframe()
     return
   }
 
   if (url.indexOf("source=") < 0) {
-    console.log("no source")
     hideButton()
     removeIframe()
     return
   }
 
+  if (url.indexOf("/reports/") < 0) {
+    hideButton()
+    removeIframe()
+  }
+
   addAnalyzeButton()
+
+  const params = parseParams()
+  if (currentParams && !isEqual(currentParams, params)) {
+    document.getElementById(iframeId).src = getFrameURL(params)
+    currentParams = params
+  }
 }
 
 function hideButton() {
   const button = document.getElementById(buttonId)
 
   if (button) {
-    console.log("hiding")
     button.style.setProperty("display", "none", "important")
   }
 }
@@ -38,7 +67,19 @@ function removeIframe() {
   if (iframe) {
     iframe.remove()
   }
+
+  currentParams = null
 }
+
+function parseParams() {
+  const url = window.location.href
+  const fight = url.match(/fight=(\d+)/)[1]
+  const source = url.match(/source=(\d+)/)[1]
+  const report = url.match(/reports\/(\w+)#/)[1]
+
+  return {fight, source, report}
+}
+
 
 function hideReport() {
   document.getElementById("report-view-contents").style.display = "none"
@@ -54,37 +95,48 @@ function addLocationObserver(callback) {
   observer.observe(document.body, config)
 }
 
+function debounce(func, timeout = 300){
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
 function handler() {
   if (document.getElementById(iframeId)) {
     return
   }
 
-  const url = window.location.href
-  const fight = url.match(/fight=(\d+)/)[1]
-  const source = url.match(/source=(\d+)/)[1]
-  console.log(fight, source)
-  const tabs = document.getElementById("top-level-view-tabs")
-  for (let link of tabs.children) {
-    link.classList.remove("selected")
-  }
-  document.getElementById(buttonId).classList.add("selected")
   document.body.classList.remove("compare")
   hideReport()
 
   const iframe = document.createElement("iframe")
+  const params = parseParams()
+  iframe.src = getFrameURL(params)
   iframe.setAttribute("id", iframeId)
-  iframe.src = "http://localhost:5173/"
   iframe.style = "min-width:100%;border:none;overflow:hidden;"
-  const report = document.getElementById("report-view-contents")
-  report.parentNode.insertBefore(iframe, report)
-  iFrameResize({ log: true, scrolling: true }, `#${iframeId}`)
+  const report_node = document.getElementById("report-view-contents")
+  report_node.parentNode.insertBefore(iframe, report_node)
+  currentParams = params
+
+  // iFrameResize({resizeFrom: 'child'}, `#${iframeId}`)
+  window.addEventListener("message", debounce(e => {
+    if (e.data > 0) {
+      console.log(e.data)
+      document.getElementById(iframeId).height = e.data + 'px';
+    }
+  }, 10))
+}
+
+function getFrameURL(params) {
+  return `http://localhost:5173?${new URLSearchParams(params)}`
 }
 
 function addAnalyzeButton() {
   let button = document.getElementById(buttonId)
 
   if (button) {
-    console.log("showing")
     button.style.display = "block"
     return
   }
@@ -112,8 +164,6 @@ function addAnalyzeButton() {
 
     if (!target.isEqualNode(btn) && !target.parentNode.isEqualNode(btn)) {
       btn.classList.remove("selected")
-      target.classList.add("selected")
-      target.parentNode.classList.add("selected")
       removeIframe()
       showReport()
     }

@@ -58,7 +58,7 @@ class Report:
             encounter["id"]: Encounter(encounter["id"], encounter["name"])
             for encounter in encounters
         }
-        self._actors = actors
+        self._actors = {actor["id"]: actor for actor in actors}
         self._abilities = abilities
         self._fights = fights
 
@@ -118,11 +118,10 @@ class Report:
             raise Exception(f"No fight found with ID: {fight_id}")
 
     def get_actor_name(self, actor_id: int):
-        for actor in self._actors:
-            if actor["id"] == actor_id:
-                return actor["name"]
-        else:
-            raise Exception(f"No actor name found for id: {actor_id}")
+        return self._actors[actor_id]["name"]
+
+    def get_is_boss_actor(self, actor_id: int):
+        return self._actors[actor_id]["subType"] == "Boss"
 
     def get_ability_name(self, ability_id: int):
         for ability in self._abilities:
@@ -396,6 +395,9 @@ class Fight:
             )
         if "targetID" in event:
             normalized_event["target"] = self._report.get_actor_name(
+                normalized_event["targetID"]
+            )
+            normalized_event["target_is_boss"] = self._report.get_is_boss_actor(
                 normalized_event["targetID"]
             )
         if "abilityGameID" in event:

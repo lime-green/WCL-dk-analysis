@@ -22,16 +22,14 @@ class BaseAnalyzer:
 
 
 class EventsTable:
-    def __init__(self, has_rune_error):
+    def __init__(self):
         self._events = []
-        self._has_rune_error = has_rune_error
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Time", style="dim")
         table.add_column("Ability")
         table.add_column("Runic Power")
-        if not has_rune_error:
-            table.add_column("Runes")
+        table.add_column("Runes")
         table.add_column("Buffs")
         table.add_column("Notes")
         self._table = table
@@ -48,6 +46,7 @@ class EventsTable:
                 r = f"[{rune_color[i]}]{r}[/{rune_color[i]}]"
             else:
                 r = f"[dim]{r}[/dim]"
+            r += f" {rune['regen_time']}"
             state += r
         return state
 
@@ -102,14 +101,13 @@ class EventsTable:
             runic_power = f"{runic_power}"
 
         rune_str = ""
-        if not self._has_rune_error:
-            if event["runes_before"] and (
-                event.get("rune_cost")
-                or event["ability"] in ("Blood Tap", "Empower Rune Weapon")
-            ):
-                rune_str += self._format_rune_state(event["runes_before"])
-                rune_str += " -> "
-            rune_str += self._format_rune_state(event["runes"])
+        if event["runes_before"] and (
+            event.get("rune_cost")
+            or event["ability"] in ("Blood Tap", "Empower Rune Weapon")
+        ):
+            rune_str += self._format_rune_state(event["runes_before"])
+            rune_str += " -> "
+        rune_str += self._format_rune_state(event["runes"])
 
         buff_strs = []
         for buff in event["buff_short_names"]:
@@ -125,9 +123,11 @@ class EventsTable:
             notes.append(f"[red]{event['hit_type']}[/red]")
             ability = f"[red]{ability}[/red]"
 
+        if event.get("rune_spend_error"):
+            notes.append("RUNE_ERROR")
+
         row = [time, ability, runic_power]
-        if not self._has_rune_error:
-            row.append(rune_str)
+        row.append(rune_str)
         row += [buff_str, ",".join(notes)]
 
         style = (
@@ -149,6 +149,8 @@ class EventsTable:
 
 
 class Rune:
+    RUNE_GRACE = 2471
+
     def __init__(self, full_name, type):
         self.full_name = full_name
         self.type = type
@@ -159,7 +161,6 @@ class Rune:
         # death rune doesn't convert back to blood when used
         # like a normal death rune does
         self.blood_tapped = False
-        self._leeway = 0
 
     def can_spend(self, timestamp: int):
         if self.regen_time is None:
@@ -170,7 +171,7 @@ class Rune:
         return (self.is_death or self.blood_tapped) and self.can_spend(timestamp)
 
     def _rune_grace_used(self, timestamp):
-        return min(2500, self.time_since_regen(timestamp))
+        return min(self.RUNE_GRACE, self.time_since_regen(timestamp))
 
     def refresh(self, timestamp):
         self.regen_time = timestamp
@@ -180,7 +181,7 @@ class Rune:
             return False, 0
 
         rune_grace_used = self._rune_grace_used(timestamp)
-        rune_grace_wasted = max(0, self.time_since_regen(timestamp) - 2500)
+        rune_grace_wasted = max(0, self.time_since_regen(timestamp) - self.RUNE_GRACE)
         self.regen_time = timestamp + (10000 - rune_grace_used)
 
         if convert and not self.blood_tapped:
@@ -492,7 +493,7 @@ class UAAnalyzer(BaseAnalyzer):
 
     @property
     def possible_ua_windows(self):
-        return 1 + (self._fight_end_time - 3000) // 60000
+        return 1 + (self._fight_end_time - 10000) // 63000
 
     def print(self):
         color = (
@@ -664,9 +665,14 @@ class DiseaseAnalyzer(BaseAnalyzer):
         self._fight_end_time = fight_end_time
 
     def add_event(self, event):
-        if event["type"] == "removedebuff" and event["ability"] in (
-            "Blood Plague",
-            "Frost Fever",
+        if (
+            event["type"] == "removedebuff"
+            and event["ability"]
+            in (
+                "Blood Plague",
+                "Frost Fever",
+            )
+            and event["target_is_boss"]
         ):
             self._dropped_diseases_timestamp.append(event["timestamp"])
 
@@ -844,7 +850,7 @@ class Analyzer:
 
         runes = RuneTracker()
         has_rune_error = self._has_rune_error()
-        table = EventsTable(has_rune_error)
+        table = EventsTable()
         buff_tracker = BuffTracker(
             {
                 "Unbreakable Armor": "UA",

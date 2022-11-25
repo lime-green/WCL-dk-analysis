@@ -8,11 +8,24 @@
       href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>DK Analyze</title>
   </head>
-  <body>
+  <body onload="adjust_iframe_height()">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script src="/iframeResizer.contentWindow.min.js"></script>
+    <script>
+      function adjust_iframe_height(){
+        const height = document.body.offsetHeight
+        parent.postMessage(height, "https://classic.warcraftlogs.com");
+      }
+
+
+      const config = { attributes: false, childList: true, subtree: true }
+      new MutationObserver(() => {
+        adjust_iframe_height()
+      }).observe(document.body, config)
+      addEventListener("load", adjust_iframe_height)
+      addEventListener("resize", adjust_iframe_height)
+    </script>
   </body>
 </html>

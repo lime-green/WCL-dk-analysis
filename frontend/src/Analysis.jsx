@@ -31,9 +31,9 @@ const ABILITY_TYPES = new Set([0, 1, 4, 16, 32]);
 
 const getAbilityTypeClass = (abilityType) => {
   if (ABILITY_TYPES.has(abilityType)) {
-    return `ability-type-${abilityType}`;
+    return `ability-name ability-type-${abilityType}`;
   }
-  return "ability-type-unknown";
+  return "ability-name ability-type-unknown";
 };
 
 const formatTimestamp = (milliSeconds, zeroPad = true) => {
@@ -79,13 +79,13 @@ const formatRanking = (ranking) => {
 const Summary = () => {
   const analysis = useContext(LogAnalysisContext);
 
-  const formatGCDLatency = useCallback((gcdLatency) => {
+  const formatGCDLatency = useCallback(gcdLatency => {
     const averageLatency = gcdLatency.average_latency;
 
     let color = "green";
-    if (averageLatency > 100) {
+    if (averageLatency > 200) {
       color = "red";
-    } else if (averageLatency > 70) {
+    } else if (averageLatency > 100) {
       color = "yellow";
     }
 
@@ -106,14 +106,16 @@ const Summary = () => {
         <div className={"diseases-dropped"}>
           <i className="fa fa-times red" aria-hidden="true"></i>
           You dropped diseases{" "}
-          <span className={"hl"}>{numDiseasesDropped}</span> times
+          <span className={"hl"}>{numDiseasesDropped}</span> times on boss
+          targets
         </div>
       );
     } else {
       return (
         <div className={"diseases-dropped"}>
           <i className="fa fa-check green" aria-hidden="true"></i>
-          Nice work, you didn't drop diseases before the end of the fight!
+          Nice work, you didn't drop diseases on boss targets before the last 10
+          seconds of the fight!
         </div>
       );
     }
@@ -148,7 +150,7 @@ const Summary = () => {
       color = "yellow";
     }
 
-    const runeDriftSeconds = runeDriftMs / 1000
+    const runeDriftSeconds = runeDriftMs / 1000;
 
     return (
       <div className={"rune-drift"}>
@@ -161,7 +163,7 @@ const Summary = () => {
 
   const formatKillingMachine = useCallback((killingMachine) => {
     const averageLatency = killingMachine.avg_latency;
-    const averageLatencySeconds = averageLatency / 1000
+    const averageLatencySeconds = averageLatency / 1000;
     const numUsed = killingMachine.num_used;
     const numTotal = killingMachine.num_total;
     let color = "green";
@@ -180,7 +182,9 @@ const Summary = () => {
           {numUsed} of {numTotal}
         </span>{" "}
         Killing Machine procs with an average delay of{" "}
-        <span className={color}>{averageLatencySeconds.toFixed(2)} seconds</span>
+        <span className={color}>
+          {averageLatencySeconds.toFixed(2)} seconds
+        </span>
       </div>
     );
   }, []);
@@ -235,9 +239,7 @@ const Summary = () => {
       return (
         <div className={"windows"}>
           {windows.map((window, i) => {
-            let icon = (
-              <i className="fa fa-times red" aria-hidden="true" />
-            );
+            let icon = <i className="fa fa-times red" aria-hidden="true" />;
             if (window.num_actual === window.num_possible) {
               icon = <i className="fa fa-check green" aria-hidden="true" />;
             }
@@ -299,7 +301,6 @@ const Summary = () => {
   const fightRanking = fight.rankings.fight_ranking.speed_percentile;
   const playerRanking = fight.rankings.player_ranking.rank_percentile;
   const summary = data.analysis;
-  console.log(summary);
 
   return (
     <div className={"analysis-summary"}>
@@ -458,7 +459,7 @@ export const Analysis = () => {
     };
 
     return (
-      <tr className={rowClass} key={`${event.timestamp}-${event.ability}`}>
+      <tr className={rowClass} key={`${event.timestamp}-${event.type}-${event.ability}`}>
         <td className={"timestamp"}>{timestamp}</td>
         <td className={abilityTdClass}>
           <div className={abilityDivClass}>
@@ -499,7 +500,11 @@ export const Analysis = () => {
   }
 
   if (analysis.isLoading) {
-    return <>Loading...</>;
+    return (
+      <div className={"fa-2x"}>
+        <i className="fa fa-spinner fa-spin"></i>
+      </div>
+    )
   }
 
   const data = analysis.data;
@@ -518,6 +523,9 @@ export const Analysis = () => {
 
   return (
     <>
+      <a rel="noreferrer" href={window.location.href} target={"_blank"}>
+        <i className="fa fa-external-link" aria-hidden="true" />
+      </a>
       <Summary />
       {runeWarning()}
       <div className={"events-table"}>

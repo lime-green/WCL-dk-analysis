@@ -36,6 +36,7 @@ class WCLClient:
           id
           name
           type
+          subType
         }
       }
       fights(killType: Kills) {
