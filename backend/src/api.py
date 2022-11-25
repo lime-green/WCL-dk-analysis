@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 
 from fastapi import FastAPI, Response
@@ -13,6 +13,15 @@ from analyze import analyze
 
 app = FastAPI()
 
+
+async def catch_exceptions_middleware(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        return Response("Internal server error", status_code=500)
+
+# Add this middleware first so 500 errors have CORS headers
+app.middleware("http")(catch_exceptions_middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -34,9 +43,10 @@ async def analyze_fight(
 ):
     report = await fetch_report(report_id, fight_id, source_id)
     loop = asyncio.get_running_loop()
+
     events = await loop.run_in_executor(
-        ProcessPoolExecutor(), functools.partial(analyze, report, fight_id)
+        ThreadPoolExecutor(), functools.partial(analyze, report, fight_id)
     )
 
-    response.headers["Cache-Control"] = "max-age=3600, public"
+    response.headers["Cache-Control"] = "max-age=86400"
     return {"data": events}

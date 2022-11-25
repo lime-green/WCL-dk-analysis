@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { createContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -28,10 +29,21 @@ export const LogAnalysisContextProvider = ({ children }) => {
         fight_id,
         report_id,
       })}`;
-      return new Promise(resolve => setTimeout(resolve, 500))
-        .then(() => fetch(url))
-        .then((res) => res.json())
-        .then((json) => json.data);
+      return new Promise((resolve) => setTimeout(resolve, 500))
+        .then(() => axios.get(url, { timeout: 10000 }))
+        .then((res) => res.data.data)
+        .catch((e) => {
+          if (e.response) {
+            return Promise.reject(`HTTP error (${e.response.status})`);
+          }
+          if (e.code === "ECONNABORTED") {
+            return Promise.reject("Request timed out");
+          }
+          if (e.name === "AxiosError") {
+            return Promise.reject(e.message);
+          }
+          return Promise.reject(String(e));
+        });
     },
   });
 

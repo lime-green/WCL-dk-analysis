@@ -79,7 +79,7 @@ const formatRanking = (ranking) => {
 const Summary = () => {
   const analysis = useContext(LogAnalysisContext);
 
-  const formatGCDLatency = useCallback(gcdLatency => {
+  const formatGCDLatency = useCallback((gcdLatency) => {
     const averageLatency = gcdLatency.average_latency;
 
     let color = "green";
@@ -343,7 +343,7 @@ const Summary = () => {
 export const Analysis = () => {
   const analysis = useContext(LogAnalysisContext);
 
-  const formatEvent = useCallback((event, showRunes) => {
+  const formatEvent = useCallback((event, showRunes, i) => {
     const abilityIcon = event.ability_icon;
     const icon = (
       <img
@@ -459,7 +459,7 @@ export const Analysis = () => {
     };
 
     return (
-      <tr className={rowClass} key={`${event.timestamp}-${event.type}-${event.ability}`}>
+      <tr className={rowClass} key={i}>
         <td className={"timestamp"}>{timestamp}</td>
         <td className={abilityTdClass}>
           <div className={abilityDivClass}>
@@ -504,7 +504,7 @@ export const Analysis = () => {
       <div className={"fa-2x"}>
         <i className="fa fa-spinner fa-spin"></i>
       </div>
-    )
+    );
   }
 
   const data = analysis.data;
@@ -546,8 +546,8 @@ export const Analysis = () => {
             </tr>
           </thead>
           <tbody>
-            {events.map((event) =>
-              formatEvent(event, !summary.has_rune_spend_error)
+            {events.map((event, i) =>
+              formatEvent(event, !summary.has_rune_spend_error, i)
             )}
           </tbody>
         </table>

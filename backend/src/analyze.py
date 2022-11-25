@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 from rich.console import Console
@@ -6,8 +7,10 @@ from rich.style import Style
 
 from report import Fight, Report
 
+# Don't print report to console if in lambda
+SHOULD_PRINT = os.environ.get("AWS_EXECUTION_ENV") is None
 
-console = Console()
+console = Console(quiet=not SHOULD_PRINT)
 
 
 class BaseAnalyzer:

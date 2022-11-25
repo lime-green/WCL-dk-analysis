@@ -4,4 +4,4 @@ version = "1"
 dependencies = ["requests", "rich", "fastapi", "uvicorn[standard]", "aiohttp"]
 
 [project.optional-dependencies]
-dev = ["pytest", "black", "flake8"]
+dev = ["pytest", "black", "flake8", "mangum"]

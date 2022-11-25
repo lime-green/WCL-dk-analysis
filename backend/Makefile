@@ -2,7 +2,7 @@
 
 VENV_NAME?=venv
 VENV_ACTIVATE=. $(VENV_NAME)/bin/activate
-PYTHON=${VENV_NAME}/bin/python3
+PYTHON=${VENV_NAME}/bin/python3.9
 
 .DEFAULT: help
 help:
@@ -18,7 +18,7 @@ prepare-dev:
 
 venv: $(VENV_NAME)/bin/activate
 $(VENV_NAME)/bin/activate: requirements.txt requirements-dev.txt
-	test -d $(VENV_NAME) || python3 -m venv $(VENV_NAME)
+	test -d $(VENV_NAME) || python3.9 -m venv $(VENV_NAME)
 	${PYTHON} -m pip install -U pip pip-tools
 	${PYTHON} -m pip install -r requirements-dev.txt
 	touch $(VENV_NAME)/bin/activate

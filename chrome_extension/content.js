@@ -120,17 +120,17 @@ function handler() {
   report_node.parentNode.insertBefore(iframe, report_node)
   currentParams = params
 
-  // iFrameResize({resizeFrom: 'child'}, `#${iframeId}`)
+  // debounce to prevent flickering
   window.addEventListener("message", debounce(e => {
     if (e.data > 0) {
-      console.log(e.data)
       document.getElementById(iframeId).height = e.data + 'px';
     }
   }, 10))
 }
 
 function getFrameURL(params) {
-  return `http://localhost:5173?${new URLSearchParams(params)}`
+  // return `http://localhost:5173?${new URLSearchParams(params)}`
+  return `https://d2krnvrnlw0zwg.cloudfront.net/?${new URLSearchParams(params)}`
 }
 
 function addAnalyzeButton() {

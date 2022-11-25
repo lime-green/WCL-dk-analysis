@@ -14,18 +14,17 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      function adjust_iframe_height(){
-        const height = document.body.offsetHeight
-        parent.postMessage(height, "https://classic.warcraftlogs.com");
+      function adjust_iframe_height() {
+        const height = document.body.offsetHeight;
+        parent.postMessage(height, "*");
       }
 
-
-      const config = { attributes: false, childList: true, subtree: true }
+      const config = { attributes: false, childList: true, subtree: true };
       new MutationObserver(() => {
-        adjust_iframe_height()
-      }).observe(document.body, config)
-      addEventListener("load", adjust_iframe_height)
-      addEventListener("resize", adjust_iframe_height)
+        adjust_iframe_height();
+      }).observe(document.body, config);
+      addEventListener("load", adjust_iframe_height);
+      addEventListener("resize", adjust_iframe_height);
     </script>
   </body>
 </html>
