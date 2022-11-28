@@ -125,6 +125,8 @@ class Report:
 
     def get_ability_name(self, ability_id: int):
         for ability in self._abilities:
+            if ability_id == 60229:
+                return "Greatness"
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:
@@ -139,6 +141,8 @@ class Report:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_armor_helm_plate_naxxramas_raidwarrior_c_01.jpg"
         if ability_id == 50842:
             return "https://wow.zamimg.com/images/wow/icons/large/spell_shadow_plaguecloud.jpg"
+        if ability_id == 60229:
+            return "https://wow.zamimg.com/images/wow/icons/large/inv_inscription_tarotgreatness.jpg"
 
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
