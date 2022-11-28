@@ -288,7 +288,7 @@ class RuneTracker(BaseAnalyzer):
         spent = blood_spend[0] and frost_spend[0] and unholy_spend[0]
 
         # Note: we don't really care about blood runes drifting
-        rune_grace_wasted = frost_spend[1] + unholy_spend[1]
+        rune_grace_wasted = max(frost_spend[1], unholy_spend[1])
         return spent, rune_grace_wasted
 
     def blood_tap(self, timestamp: int):
@@ -491,12 +491,12 @@ class UAAnalyzer(BaseAnalyzer):
             if event["ability"] == "Empower Rune Weapon":
                 self._window.expected_oblits = 6
                 self._window.with_erw = True
-            if event["type"] == "cast" and event["ability"] == "Obliterate":
+            if event["type"] == "cast" and event["ability"] == "Obliterate" and not event["is_miss"]:
                 self._window.oblits += 1
 
     @property
     def possible_ua_windows(self):
-        return 1 + (self._fight_end_time - 10000) // 63000
+        return max(1 + (self._fight_end_time - 10000) // 63000, len(self._windows))
 
     def print(self):
         color = (
@@ -712,6 +712,26 @@ class DiseaseAnalyzer(BaseAnalyzer):
         }
 
 
+class RimeAnalyzer(BaseAnalyzer):
+    def __init__(self):
+        self._num_total = 0
+        self._num_used = 0
+
+    def add_event(self, event):
+        if event["type"] in ("applybuff", "refreshbuff") and event["ability"] == "Rime":
+            self._num_total += 1
+        if event.get("consumes_rime"):
+            self._num_used += 1
+
+    def report(self):
+        return {
+            "rime": {
+                "num_total": self._num_total,
+                "num_used": self._num_used,
+            }
+        }
+
+
 class HowlingBlastAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._bad_usages = 0
@@ -880,6 +900,7 @@ class Analyzer:
             DiseaseAnalyzer(self._fight.end_time),
             HowlingBlastAnalyzer(),
             CoreAbilities(),
+            RimeAnalyzer(),
         ]
 
         for event in self._events:

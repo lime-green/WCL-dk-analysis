@@ -29,8 +29,7 @@ export const LogAnalysisContextProvider = ({ children }) => {
         fight_id,
         report_id,
       })}`;
-      return new Promise((resolve) => setTimeout(resolve, 500))
-        .then(() => axios.get(url, { timeout: 10000 }))
+      return axios.get(url, { timeout: 10000 })
         .then((res) => res.data.data)
         .catch((e) => {
           if (e.response) {

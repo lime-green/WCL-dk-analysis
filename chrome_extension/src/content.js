@@ -116,6 +116,7 @@ function handler() {
   iframe.src = getFrameURL(params)
   iframe.setAttribute("id", iframeId)
   iframe.style = "min-width:100%;border:none;overflow:hidden;"
+  iframe.scrolling = "no"
   const report_node = document.getElementById("report-view-contents")
   report_node.parentNode.insertBefore(iframe, report_node)
   currentParams = params
@@ -129,7 +130,9 @@ function handler() {
 }
 
 function getFrameURL(params) {
-  // return `http://localhost:5173?${new URLSearchParams(params)}`
+  if (window.chrome.runtime.id === "nkocfdjkdofcdcfgohgkhgbnofmfppea") {
+    return `http://localhost:5173?${new URLSearchParams(params)}`
+  }
   return `https://d2krnvrnlw0zwg.cloudfront.net/?${new URLSearchParams(params)}`
 }
 
@@ -173,4 +176,3 @@ function addAnalyzeButton() {
 
 addLocationObserver(init)
 init()
-

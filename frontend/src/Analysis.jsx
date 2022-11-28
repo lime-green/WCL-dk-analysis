@@ -292,6 +292,20 @@ const Summary = () => {
     );
   }, []);
 
+  const formatRime = useCallback(rime => {
+    const numTotal = rime.num_total
+    const numUsed = rime.num_used
+    return (
+      <div className={"rime-analysis"}>
+        <i className="fa fa-info hl" aria-hidden="true"></i>
+        You used your Rime procs <span className={"hl"}>
+          {numUsed} of {numTotal}
+        </span>{" "}
+        times
+      </div>
+    )
+  }, [])
+
   if (analysis.isLoading || analysis.error) {
     return;
   }
@@ -332,6 +346,7 @@ const Summary = () => {
         {formatDiseases(summary.diseases_dropped)}
         {formatHowlingBlast(summary.howling_blast_bad_usages)}
         {formatRunicPower(summary.runic_power)}
+        {formatRime(summary.rime)}
         <h3>Miscellaneous</h3>
         {formatFlask(summary.flask_usage)}
         {formatPotions(summary.potion_usage)}
