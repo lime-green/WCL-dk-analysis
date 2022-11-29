@@ -216,16 +216,14 @@ const Summary = () => {
       return (
         <div className={"potions"}>
           <i className="fa fa-check green" aria-hidden="true"></i>
-          You used <span className={"hl"}>{potionsUsed} of 2</span> Potions of
-          Speed
+          You used <span className={"hl"}>{potionsUsed} of 2</span> Potions (Speed or Indestructible)
         </div>
       );
     }
     return (
       <div className={"potions"}>
         <i className="fa fa-times red" aria-hidden="true"></i>
-        You used <span className={"hl"}>{potionsUsed} of 2</span> Potions of
-        Speed
+        You used <span className={"hl"}>{potionsUsed} of 2</span> Potions (Speed or Indestructible)
       </div>
     );
   }, []);

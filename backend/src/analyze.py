@@ -375,7 +375,7 @@ class BuffTracker(BaseAnalyzer):
 
         # There's a bug where Speed is in starting auras but also
         # an event after the fight starts
-        if name == "Speed" and name not in self._active:
+        if name in ("Speed", "Indestructible") and name not in self._active:
             self._pots_used += 1
 
         if name in self._buffs_to_track:
@@ -889,6 +889,7 @@ class Analyzer:
                 "Greatness": "Greatness",
                 "Killing Machine": "KM",
                 "Grim Toll": "Grim Toll",
+                "Indestructible": "Indestructible",
             },
             starting_auras,
         )
