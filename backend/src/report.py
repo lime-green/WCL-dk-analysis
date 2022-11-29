@@ -156,6 +156,8 @@ class Report:
             raise Exception(f"No ability name found for id: {ability_id}")
 
     def get_ability_icon(self, ability_id: int):
+        if ability_id == 57371:
+            return "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
         if ability_id == 24383:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
         if ability_id == 51271:
