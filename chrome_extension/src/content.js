@@ -75,7 +75,7 @@ function parseParams() {
   const url = window.location.href
   const fight = url.match(/fight=(\d+)/)[1]
   const source = url.match(/source=(\d+)/)[1]
-  const report = url.match(/reports\/(\w+)#/)[1]
+  const report = url.match(/reports\/(\w+)[\/#]/)[1]
 
   return {fight, source, report}
 }

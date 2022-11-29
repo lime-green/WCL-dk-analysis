@@ -373,7 +373,9 @@ class BuffTracker(BaseAnalyzer):
         if name == "Flask of Endless Rage":
             self._has_flask = True
 
-        if name == "Speed":
+        # There's a bug where Speed is in starting auras but also
+        # an event after the fight starts
+        if name == "Speed" and name not in self._active:
             self._pots_used += 1
 
         if name in self._buffs_to_track:
