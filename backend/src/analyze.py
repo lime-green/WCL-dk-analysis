@@ -413,7 +413,7 @@ class BuffTracker(BaseAnalyzer):
         red = "[red]x[/red]"
         green = "[green]✓[/green]"
 
-        s = green if self._pots_used == 2 else red
+        s = green if self._pots_used >= 2 else red
         s += f" {self._pots_used} potions used"
         console.print(s)
 
@@ -425,11 +425,9 @@ class BuffTracker(BaseAnalyzer):
     def report(self):
         return {
             "potion_usage": {
-                "indicator": "success" if self._pots_used == 2 else "fail",
                 "potions_used": self._pots_used,
             },
             "flask_usage": {
-                "indicator": "success" if self._has_flask else "fail",
                 "has_flask": self._has_flask,
             },
         }

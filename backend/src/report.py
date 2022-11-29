@@ -37,6 +37,20 @@ MISS_EVENTS = {"MISS", "DODGE", "PARRY", "IMMUNE", "REFLECT", "EVADE", "RESIST_F
 
 NO_RUNES = {"blood": 0, "frost": 0, "unholy": 0}
 
+SPELL_TRANSLATIONS = {
+    55775: "Swordguard Embroidery",
+    60229: "Greatness",
+    49909: "Icy Touch",
+    49921: "Plague Strike",
+    54758: "Hyperspeed Acceleration",
+    51425: "Obliterate",
+    55268: "Frost Strike",
+    51411: "Howling Blast",
+    49930: "Blood Strike",
+    57623: "Horn of Winter",
+    49895: "Death Coil",
+    49938: "Death and Decay",
+}
 
 class Report:
     def __init__(
@@ -124,11 +138,10 @@ class Report:
         return self._actors[actor_id]["subType"] == "Boss"
 
     def get_ability_name(self, ability_id: int):
+        if ability_id in SPELL_TRANSLATIONS:
+            return SPELL_TRANSLATIONS[ability_id]
+
         for ability in self._abilities:
-            if ability_id == 55775:
-                return "Swordguard Embroidery"
-            if ability_id == 60229:
-                return "Greatness"
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:

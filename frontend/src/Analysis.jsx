@@ -211,12 +211,13 @@ const Summary = () => {
 
   const formatPotions = useCallback((potions) => {
     const potionsUsed = potions.potions_used;
+    const total = potionsUsed > 2 ? potionsUsed : 2
 
-    if (potionsUsed === 2) {
+    if (potionsUsed >= 2) {
       return (
         <div className={"potions"}>
           <i className="fa fa-check green" aria-hidden="true"></i>
-          You used <span className={"hl"}>{potionsUsed} of 2</span> Potions (Speed or Indestructible)
+          You used <span className={"hl"}>{potionsUsed} of {total}</span> Potions (Speed or Indestructible)
         </div>
       );
     }
