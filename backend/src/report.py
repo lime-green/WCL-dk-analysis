@@ -50,6 +50,7 @@ SPELL_TRANSLATIONS = {
     57623: "Horn of Winter",
     49895: "Death Coil",
     49938: "Death and Decay",
+    56815: "Rune Strike",
 }
 
 class Report:
