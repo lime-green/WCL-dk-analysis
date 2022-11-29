@@ -145,6 +145,8 @@ class Report:
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:
+            if ability_id == 57371:
+                return "Well Fed"
             if ability_id == 24383:
                 return "Swiftness of Zanza"
             if ability_id in (28878, 6562):

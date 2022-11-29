@@ -14,7 +14,8 @@ from client import fetch_report
 from analyze import analyze
 
 
-if os.environ.get("AWS_EXECUTION_ENV"):
+SENTRY_ENABLED = os.environ.get("AWS_EXECUTION_ENV") is not None
+if SENTRY_ENABLED:
     sentry_sdk.init(
         dsn="https://d5eb49442a8f433b86952081e5e42bfb@o4504244781711360.ingest.sentry.io/4504244816117760",
         traces_sample_rate=0.05,
@@ -27,6 +28,9 @@ async def catch_exceptions_middleware(request, call_next):
         return await call_next(request)
     except Exception as e:
         logging.exception(e)
+
+        if SENTRY_ENABLED:
+            sentry_sdk.flush()
         return Response("Internal server error", status_code=500)
 
 
