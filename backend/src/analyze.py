@@ -890,6 +890,13 @@ class Analyzer:
                 "Killing Machine": "KM",
                 "Grim Toll": "Grim Toll",
                 "Indestructible": "Indestructible",
+                "Mark of Norgannon": "Mark",
+                "Berserking": "Berserking",
+                "Black Magic": "Black Magic",
+                "Swordguard Embroidery": "Swordguard Embroidery",
+                "Unholy Strength": "Unholy Strength",
+                "Skyflare Swiftness": "Skyflare Swiftness",
+                "Edward's Insight": "Edward's Insight",
             },
             starting_auras,
         )

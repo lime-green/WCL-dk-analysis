@@ -125,6 +125,8 @@ class Report:
 
     def get_ability_name(self, ability_id: int):
         for ability in self._abilities:
+            if ability_id == 55775:
+                return "Swordguard Embroidery"
             if ability_id == 60229:
                 return "Greatness"
             if ability["gameID"] == ability_id:
