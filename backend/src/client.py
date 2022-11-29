@@ -134,6 +134,11 @@ class WCLClient:
         zone_id = (await self._query(zone_query))["data"]["reportData"]["report"][
             "zone"
         ]["id"]
+
+        # Sometimes seems to return VoA for naxx reports, we don't care about VoA usually
+        if zone_id == 1016:
+            zone_id = 1015
+
         metadata = await self._fetch_metadata(report_id, zone_id)
         report_metadata = metadata["reportData"]["report"]
         encounters = metadata["worldData"]["zone"]["encounters"]

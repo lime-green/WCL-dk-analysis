@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import functools
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
@@ -17,7 +18,8 @@ app = FastAPI()
 async def catch_exceptions_middleware(request, call_next):
     try:
         return await call_next(request)
-    except Exception:
+    except Exception as e:
+        logging.exception(e)
         return Response("Internal server error", status_code=500)
 
 # Add this middleware first so 500 errors have CORS headers
