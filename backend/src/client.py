@@ -20,7 +20,7 @@ class WCLClient:
         await self._session.__aexit__(*args)
         self._session = None
 
-    async def _fetch_metadata(self, report_code, zone_id):
+    async def _fetch_metadata(self, report_code):
         metadata_query = """
 {
   reportData {
@@ -47,20 +47,8 @@ class WCLClient:
       }
     }
   }
-  worldData {
-    zone(id: %s) {
-      encounters {
-        id
-        name
-      }
-    }
-  }
 }
-""" % (
-            report_code,
-            zone_id,
-        )
-
+""" % report_code
         return (await self._query(metadata_query))["data"]
 
     async def _fetch_events(self, report_code, fight_id, source_id):
@@ -115,12 +103,11 @@ class WCLClient:
         return events, combatant_info, rankings
 
     async def query(self, report_id, fight_id, source_id):
-        zone_query = (
-            """
+        encounter_query = """
 {
-    reportData {
-        report(code: "%s") {
-            zone {
+    worldData {
+        zones {
+            encounters {
                 id
                 name
             }
@@ -128,20 +115,11 @@ class WCLClient:
     }
 }
         """
-            % report_id
-        )
 
-        zone_id = (await self._query(zone_query))["data"]["reportData"]["report"][
-            "zone"
-        ]["id"]
-
-        # Sometimes seems to return VoA for naxx reports, we don't care about VoA usually
-        if zone_id == 1016:
-            zone_id = 1015
-
-        metadata = await self._fetch_metadata(report_id, zone_id)
+        zones = (await self._query(encounter_query))["data"]["worldData"]["zones"]
+        encounters = [encounter for zone in zones for encounter in zone["encounters"]]
+        metadata = await self._fetch_metadata(report_id)
         report_metadata = metadata["reportData"]["report"]
-        encounters = metadata["worldData"]["zone"]["encounters"]
         actors = report_metadata["masterData"]["actors"]
 
         for actor in actors:
