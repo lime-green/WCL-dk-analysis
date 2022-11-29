@@ -130,7 +130,7 @@ function handler() {
 }
 
 function getFrameURL(params) {
-  if (window.chrome && window.chrome.runtime.id === "nkocfdjkdofcdcfgohgkhgbnofmfppea") {
+  if (window.chrome && window.chrome.runtime.id === "aalplhgcljbeccbfkbdfhkfnenfmjhdf") {
     return `http://localhost:5173?${new URLSearchParams(params)}`
   }
   return `https://d2krnvrnlw0zwg.cloudfront.net/?${new URLSearchParams(params)}`

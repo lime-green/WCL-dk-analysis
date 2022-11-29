@@ -1,7 +1,7 @@
 [project]
 name = "dk-parse"
 version = "1"
-dependencies = ["requests", "rich", "fastapi", "uvicorn[standard]", "aiohttp"]
+dependencies = ["requests", "rich", "fastapi", "uvicorn[standard]", "aiohttp", "sentry-sdk[fastapi]"]
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "flake8", "mangum"]

@@ -53,6 +53,7 @@ SPELL_TRANSLATIONS = {
     56815: "Rune Strike",
 }
 
+
 class Report:
     def __init__(
         self,

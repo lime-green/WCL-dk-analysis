@@ -491,7 +491,11 @@ class UAAnalyzer(BaseAnalyzer):
             if event["ability"] == "Empower Rune Weapon":
                 self._window.expected_oblits = 6
                 self._window.with_erw = True
-            if event["type"] == "cast" and event["ability"] == "Obliterate" and not event["is_miss"]:
+            if (
+                event["type"] == "cast"
+                and event["ability"] == "Obliterate"
+                and not event["is_miss"]
+            ):
                 self._window.oblits += 1
 
     @property

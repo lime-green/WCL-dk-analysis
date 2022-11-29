@@ -22,7 +22,8 @@ class WCLClient:
         self._session = None
 
     async def _fetch_metadata(self, report_code):
-        metadata_query = """
+        metadata_query = (
+            """
 {
   reportData {
     report(code: "%s") {
@@ -49,7 +50,9 @@ class WCLClient:
     }
   }
 }
-""" % report_code
+"""
+            % report_code
+        )
         return (await self._query(metadata_query))["data"]
 
     async def _fetch_events(self, report_code, fight_id, source_id):

@@ -1,9 +1,11 @@
 import asyncio
 import logging
 import functools
+import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 
+import sentry_sdk
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -12,6 +14,11 @@ from client import fetch_report
 from analyze import analyze
 
 
+if os.environ.get("AWS_EXECUTION_ENV"):
+    sentry_sdk.init(
+        dsn="https://d5eb49442a8f433b86952081e5e42bfb@o4504244781711360.ingest.sentry.io/4504244816117760",
+        traces_sample_rate=0.05,
+    )
 app = FastAPI()
 
 
@@ -21,6 +28,7 @@ async def catch_exceptions_middleware(request, call_next):
     except Exception as e:
         logging.exception(e)
         return Response("Internal server error", status_code=500)
+
 
 # Add this middleware first so 500 errors have CORS headers
 app.middleware("http")(catch_exceptions_middleware)
