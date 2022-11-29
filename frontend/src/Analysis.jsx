@@ -311,8 +311,17 @@ const Summary = () => {
 
   const data = analysis.data;
   const fight = data.fight_metadata;
-  const fightRanking = fight.rankings.fight_ranking.speed_percentile;
-  const playerRanking = fight.rankings.player_ranking.rank_percentile;
+
+  let fightRanking, playerRanking, dps
+  if (Object.keys(fight.rankings).length !== 0) {
+    fightRanking = fight.rankings.fight_ranking.speed_percentile;
+    playerRanking = fight.rankings.player_ranking.rank_percentile;
+    dps = Math.round(fight.rankings.player_ranking.dps)
+  } else {
+    fightRanking = "n/a"
+    playerRanking = "n/a"
+    dps = "n/a"
+  }
   const summary = data.analysis;
 
   return (
@@ -325,7 +334,7 @@ const Summary = () => {
         <div className={"summary-line"}>
           DPS:{" "}
           <span className={"hl"}>
-            {Math.round(fight.rankings.player_ranking.dps)}
+            {dps}
           </span>{" "}
           ({formatRanking(playerRanking)})
         </div>

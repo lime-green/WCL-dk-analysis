@@ -109,16 +109,14 @@ class Report:
                 ]
                 assert combatant_info
 
-                fight_rankings = self._rankings[fight["id"]]
-                for player_ranking in fight_rankings["player_rankings"]:
+                fight_rankings = self._rankings.get(fight["id"], {})
+                for player_ranking in fight_rankings.get("player_rankings", []):
                     if player_ranking["name"] == self.source.name:
                         fight_rankings = {
                             "player_ranking": player_ranking,
                             "fight_ranking": fight_rankings["fight_ranking"],
                         }
                         break
-                else:
-                    raise Exception("No rankings found for fight")
 
                 return Fight(
                     self,

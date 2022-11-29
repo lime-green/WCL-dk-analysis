@@ -1,4 +1,5 @@
 import aiohttp
+import logging
 
 from report import Report, Source
 
@@ -98,7 +99,11 @@ class WCLClient:
             combatant_info = r["combatantInfo"]["data"]
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
-            rankings = r["rankings"]["data"]
+
+            if r["rankings"]:
+                rankings = r["rankings"]["data"]
+            else:
+                rankings = []
 
         return events, combatant_info, rankings
 
@@ -173,7 +178,7 @@ class WCLClient:
         json = await r.json()
 
         if "errors" in json:
-            raise Exception(json["errors"])
+            logging.error(json["errors"])
 
         return json
 

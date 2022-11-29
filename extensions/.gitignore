@@ -1,3 +1,5 @@
 chrome_extension.pem
 chrome_extension.crx
 chrome_extension.zip
+firefox_extension.zip
+.DS_Store
