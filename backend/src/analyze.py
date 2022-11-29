@@ -602,6 +602,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Hyperspeed Acceleration",
         "Blood Fury",
         "Berserking",
+        "Indestructible",
     }
 
     def __init__(self):
@@ -643,14 +644,18 @@ class GCDAnalyzer(BaseAnalyzer):
 
         return latencies
 
-    def print(self):
+    @property
+    def average_latency(self):
         latencies = self.latencies
-        average_latency = sum(latencies) / len(latencies) if latencies else 0
+        # Don't count first GCD
+        return sum(latencies[1:]) / len(latencies[1:]) if latencies else 0
+
+    def print(self):
+        average_latency = self.average_latency
         console.print(f"* Your average GCD usage delay was {average_latency:.2f} ms")
 
     def report(self):
-        latencies = self.latencies
-        average_latency = sum(latencies) / len(latencies) if latencies else 0
+        average_latency = self.average_latency
 
         return {
             "gcd_latency": {
