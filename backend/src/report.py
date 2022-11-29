@@ -146,6 +146,8 @@ class Report:
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:
+            if ability_id == 24383:
+                return "Swiftness of Zanza"
             if ability_id in (28878, 6562):
                 return "Heroic Presence"
             if ability_id == 393387:
@@ -153,6 +155,8 @@ class Report:
             raise Exception(f"No ability name found for id: {ability_id}")
 
     def get_ability_icon(self, ability_id: int):
+        if ability_id == 24383:
+            return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
         if ability_id == 51271:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_armor_helm_plate_naxxramas_raidwarrior_c_01.jpg"
         if ability_id == 50842:

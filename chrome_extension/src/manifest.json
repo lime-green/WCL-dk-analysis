@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "WCL DK Analysis",
   "description": "Tool to analyze WCL logs for Classic WoW Frost DKs",
-  "version": "1.0",
+  "version": "1.0.1",
   "action": {
     "default_icon": "icon_128.png"
   },
