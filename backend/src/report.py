@@ -102,13 +102,15 @@ class Report:
         return ret
 
     def get_fight(self, fight_id):
+        if fight_id == -1:
+            fight_id = self._fights[-1]["id"]
+
         for fight in self._fights:
             # Assumes one successful fight per encounter
             if fight["id"] == fight_id:
                 combatant_info = [
                     c for c in self._combatant_info if c["fight"] == fight["id"]
                 ]
-                assert combatant_info
 
                 fight_rankings = self._rankings.get(fight["id"], {})
                 for player_ranking in fight_rankings.get("player_rankings", []):
@@ -119,9 +121,14 @@ class Report:
                         }
                         break
 
+                encounter = self._encounters.get(fight["encounterID"])
+                if not encounter:
+                    actor_id = fight["enemyNPCs"][0]["id"]
+                    encounter = Encounter(0, self.get_actor_name(actor_id))
+
                 return Fight(
                     self,
-                    self._encounters[fight["encounterID"]],
+                    encounter,
                     fight["startTime"],
                     fight["endTime"],
                     [event for event in self._events if fight["id"] == event["fight"]],
@@ -230,6 +237,10 @@ class Fight:
         return self._report.source
 
     def get_combatant_info(self, source_id: int):
+        # It's possible there's no combatant info sometimes (WCL bug?)
+        if source_id not in self._combatant_info_lookup:
+            return {}
+
         combatant_info = self._combatant_info_lookup[source_id]
         for aura in combatant_info["auras"]:
             if "name" not in aura:
@@ -238,7 +249,7 @@ class Fight:
         return combatant_info
 
     def _add_proc_consumption(self):
-        auras = self.get_combatant_info(self.source.id)["auras"]
+        auras = self.get_combatant_info(self.source.id).get("auras", [])
         has_rime = False
         has_km = False
 

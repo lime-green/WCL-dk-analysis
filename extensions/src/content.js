@@ -73,7 +73,8 @@ function removeIframe() {
 
 function parseParams() {
   const url = window.location.href
-  const fight = url.match(/fight=(\d+)/)[1]
+  let fight = url.match(/fight=(\w+)/)[1]
+  fight = fight === "last" ? -1 : fight
   const source = url.match(/source=(\d+)/)[1]
   const report = url.match(/reports\/(\w+)[\/#]/)[1]
 

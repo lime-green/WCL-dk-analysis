@@ -878,7 +878,7 @@ class Analyzer:
 
         source_id = self._fight.source.id
         combatant_info = self._fight.get_combatant_info(source_id)
-        starting_auras = combatant_info["auras"]
+        starting_auras = combatant_info.get("auras", [])
 
         runes = RuneTracker()
         has_rune_error = self._has_rune_error()

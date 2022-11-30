@@ -41,11 +41,14 @@ class WCLClient:
           subType
         }
       }
-      fights(killType: Kills) {
+      fights {
         encounterID
         id
         startTime
         endTime
+        enemyNPCs {
+            id
+        }
       }
     }
   }
@@ -64,7 +67,6 @@ class WCLClient:
   reportData {
     report(code: "%(report_code)s") {
       events(
-        killType: Kills
         startTime: %(next_page_timestamp)s
         endTime: 100000000000
         sourceID: %(source_id)s
@@ -79,11 +81,11 @@ class WCLClient:
         fightIDs: [%(fight_id)s]
       )
       combatantInfo: events(
-        killType: Kills
         startTime: %(next_page_timestamp)s
         endTime: 100000000000
         useActorIDs: true
         dataType: CombatantInfo
+        fightIDs: [%(fight_id)s]
       ) {
         data
       }
@@ -137,6 +139,9 @@ class WCLClient:
         else:
             raise Exception("Character not found")
 
+        if fight_id == -1:
+            fight_id = report_metadata["fights"][-1]["id"]
+
         events, combatant_info, rankings = await self._fetch_events(
             report_id, fight_id, source_id
         )
@@ -151,24 +156,6 @@ class WCLClient:
             report_metadata["masterData"]["abilities"],
             report_metadata["fights"],
         )
-
-    async def get_ability_icon(self, ability_id):
-        query = (
-            """
-{
-  gameData {
-    ability(id: %s) {
-      id
-      icon
-      name
-    }
-  }
-}
-
-"""
-            % ability_id
-        )
-        return (await self._query(query))["data"]["gameData"]
 
     async def _query(self, query):
         session = await self.session()
