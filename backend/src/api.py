@@ -9,6 +9,7 @@ import sentry_sdk
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 from client import fetch_report
 from analyze import analyze
@@ -19,6 +20,8 @@ if SENTRY_ENABLED:
     sentry_sdk.init(
         dsn="https://d5eb49442a8f433b86952081e5e42bfb@o4504244781711360.ingest.sentry.io/4504244816117760",
         traces_sample_rate=0.05,
+        attach_stacktrace=True,
+        integrations=[AwsLambdaIntegration()],
     )
 app = FastAPI()
 
@@ -28,9 +31,6 @@ async def catch_exceptions_middleware(request, call_next):
         return await call_next(request)
     except Exception as e:
         logging.exception(e)
-
-        if SENTRY_ENABLED:
-            sentry_sdk.flush()
         return Response("Internal server error", status_code=500)
 
 
