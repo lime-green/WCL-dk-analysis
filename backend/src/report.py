@@ -145,9 +145,13 @@ class Report:
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:
+            if ability_id == 48470:
+                return "Gift of the Wild"
+            if ability_id == 53760:
+                return "Flask of Endless Rage"
             if ability_id == 25898:
                 return "Greater Blessing of Kings"
-            if ability_id == 57371:
+            if ability_id in (57371, 57399):
                 return "Well Fed"
             if ability_id == 24383:
                 return "Swiftness of Zanza"
@@ -171,9 +175,13 @@ class Report:
                     f'https://wow.zamimg.com/images/wow/icons/large/{ability["icon"]}'
                 )
         else:
+            if ability_id == 48470:
+                return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_giftofthewild.jpg"
+            if ability_id == 53760:
+                return "https://wow.zamimg.com/images/wow/icons/large/inv_alchemy_endlessflask_06.jpg"
             if ability_id == 25898:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_magic_greaterblessingofkings.jpg"
-            if ability_id == 57371:
+            if ability_id in (57371, 57399):
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
             if ability_id == 24383:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
