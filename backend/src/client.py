@@ -4,6 +4,14 @@ import logging
 from report import Report, Source
 
 
+class WCLClientException(Exception):
+    pass
+
+
+class PrivateReport(WCLClientException):
+    pass
+
+
 class WCLClient:
     base_url = "https://classic.warcraftlogs.com/api/v2/client"
 
@@ -169,6 +177,9 @@ class WCLClient:
 
         if "errors" in json:
             logging.error(json["errors"])
+
+            if json["errors"][0]["message"] == "You do not have permission to view this report.":
+                raise PrivateReport
 
         return json
 

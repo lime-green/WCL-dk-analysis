@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
-from client import fetch_report
+from client import fetch_report, PrivateReport
 from analyze import analyze
 
 
@@ -55,7 +55,12 @@ class AnalyzeResponse(BaseModel):
 async def analyze_fight(
     response: Response, report_id: str, fight_id: int, source_id: int
 ):
-    report = await fetch_report(report_id, fight_id, source_id)
+    try:
+        report = await fetch_report(report_id, fight_id, source_id)
+    except PrivateReport:
+        response.status_code = 403
+        return {"error": "Can not analyze private reports"}
+
     loop = asyncio.get_running_loop()
 
     events = await loop.run_in_executor(

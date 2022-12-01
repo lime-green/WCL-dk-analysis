@@ -33,6 +33,9 @@ export const LogAnalysisContextProvider = ({ children }) => {
         .then((res) => res.data.data)
         .catch((e) => {
           if (e.response) {
+            if (e.response.data?.error) {
+              return Promise.reject(e.response.data.error)
+            }
             return Promise.reject(`HTTP error (${e.response.status})`);
           }
           if (e.code === "ECONNABORTED") {
