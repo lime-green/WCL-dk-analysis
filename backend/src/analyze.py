@@ -607,6 +607,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Blood Fury",
         "Berserking",
         "Indestructible",
+        "Deathchill",
     }
 
     def __init__(self):
