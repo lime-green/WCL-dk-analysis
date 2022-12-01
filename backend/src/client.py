@@ -88,6 +88,7 @@ class WCLClient:
         data
       }
       rankings(
+        playerMetric: dps
         fightIDs: [%(fight_id)s]
       )
       combatantInfo: events(

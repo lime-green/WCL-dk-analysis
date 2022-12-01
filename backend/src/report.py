@@ -1,3 +1,4 @@
+import itertools
 from dataclasses import dataclass
 
 
@@ -91,7 +92,11 @@ class Report:
                 },
             }
 
-            for ranking in fight_ranking["roles"]["dps"]["characters"]:
+            for ranking in itertools.chain(
+                fight_ranking["roles"]["dps"]["characters"],
+                fight_ranking["roles"]["tanks"]["characters"],
+                fight_ranking["roles"]["healers"]["characters"],
+            ):
                 ranking = {
                     "name": ranking["name"],
                     "dps": ranking["amount"],
