@@ -1,4 +1,4 @@
-import React, { useCallback, useContext } from "react";
+import React, {useCallback, useContext, useState} from "react";
 import { LogAnalysisContext } from "./LogAnalysisContext.jsx";
 
 import BloodRune from "./assets/blood_rune.webp";
@@ -305,6 +305,19 @@ const Summary = () => {
     )
   }, [])
 
+  const Tooltip = ({ tooltipText }) => {
+    const [hover, setHover] = useState(false)
+
+    return (
+      <span className="tooltip-container" onMouseOver={() => setHover(true)} onMouseOut={() => setHover(false)}>
+        <i className="fa fa-question-circle" />
+        <div className={`tooltip ${hover ? 'tooltip-show' : ''}`}>
+          {tooltipText}
+        </div>
+      </span>
+    )
+  }
+
   const formatScore = useCallback(score => {
     let color = "red"
     if (score > 0.8) {
@@ -317,7 +330,10 @@ const Summary = () => {
 
     return (
       <h2>
-        Analysis score: <span className={color}>{score.toFixed(2) * 100}</span>
+        Analysis score: <span className={`total-score ${color}`}>{(score * 100).toFixed(2)}</span>
+        <span className={"total-score-tooltip"}>
+          <Tooltip tooltipText="A score of how well you did on this fight, based upon Speed, Rotation and Misc. metrics, each weighted differently. Range is 0-100."/>
+        </span>
       </h2>
     )
   }, [])
@@ -361,7 +377,7 @@ const Summary = () => {
           {formatRanking(fightRanking)})
         </div>
       </div>
-      <div className={"total-score"}>
+      <div className={"total-score-div"}>
         {formatScore(summary.analysis_scores.total_score)}
       </div>
       <div className={"fight-analysis"}>

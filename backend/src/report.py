@@ -60,6 +60,7 @@ class Report:
         self,
         source: Source,
         events,
+        deaths,
         rankings,
         combatant_info,
         encounters,
@@ -69,6 +70,7 @@ class Report:
     ):
         self.source = source
         self._events = events
+        self._deaths = {death["targetID"]: death for death in deaths}
         self._rankings = self._parse_rankings(rankings)
         self._combatant_info = combatant_info
         self._encounters = {
@@ -148,6 +150,9 @@ class Report:
 
     def get_is_boss_actor(self, actor_id: int):
         return self._actors[actor_id]["subType"] == "Boss"
+
+    def get_target_death(self, actor_id: int):
+        return self._deaths.get(actor_id, {}).get("timestamp")
 
     def get_ability_name(self, ability_id: int):
         if ability_id in SPELL_TRANSLATIONS:
@@ -429,6 +434,7 @@ class Fight:
                     "sourceID": event["sourceID"],
                     "target": event["target"],
                     "targetID": event["targetID"],
+                    "target_dies_at": event["target_dies_at"],
                     "rune_cost": event["rune_cost"],
                     "runic_power": event["runic_power"],
                     "runic_power_waste": event.get("runic_power_waste", 0),
@@ -461,6 +467,7 @@ class Fight:
             normalized_event["target_is_boss"] = self._report.get_is_boss_actor(
                 normalized_event["targetID"]
             )
+            normalized_event["target_dies_at"] = self._report.get_target_death(normalized_event["targetID"])
         if "abilityGameID" in event:
             normalized_event["ability"] = self._report.get_ability_name(
                 event["abilityGameID"]

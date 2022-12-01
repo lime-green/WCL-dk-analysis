@@ -16,6 +16,42 @@ table {
   top: 10px;
 }
 
+.total-score-tooltip {
+  vertical-align: top;
+}
+
+.tooltip-container {
+  position: relative;
+  font-size: 14px;
+  text-align: start;
+  height: 100%;
+  display: inline-block;
+
+  margin: 5px;
+
+  i {
+    color: #4a80ff;
+    font-size: 12px;
+  }
+
+  .tooltip {
+    display: none;
+    position: absolute;
+    width: 200px;
+    color: white;
+    background: #4a80ff;
+    border-radius: 10px;
+    padding: 2px;
+    padding-left: 10px;
+    margin-left: 5px;
+    top: -4px;
+  }
+
+  .tooltip-show {
+    display: inline-block;
+  }
+}
+
 .ability {
   .ability-name {
     display: inline-block;
@@ -23,6 +59,14 @@ table {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+.total-score-div {
+  width: 100%;
+
+  .total-score {
+    font-size: 28px;
   }
 }
 

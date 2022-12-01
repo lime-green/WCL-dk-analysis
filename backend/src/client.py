@@ -69,8 +69,10 @@ class WCLClient:
         return (await self._query(metadata_query, "metadata"))["data"]
 
     async def _fetch_events(self, report_code, fight_id, source_id):
+        deaths = []
         events = []
         combatant_info = []
+        rankings = []
         next_page_timestamp = 0
         events_query_t = """
 {
@@ -83,8 +85,19 @@ class WCLClient:
         useActorIDs: true
         includeResources: true
         fightIDs: [%(fight_id)s]
+        limit: 10000
       ) {
         nextPageTimestamp
+        data
+      }
+      deaths: events(
+        startTime: 0
+        endTime: 100000000000
+        useActorIDs: true
+        sourceID: -1
+        fightIDs: [%(fight_id)s]
+        limit: 10000
+      ) {
         data
       }
       rankings(
@@ -92,11 +105,12 @@ class WCLClient:
         fightIDs: [%(fight_id)s]
       )
       combatantInfo: events(
-        startTime: %(next_page_timestamp)s
+        startTime: 0
         endTime: 100000000000
         useActorIDs: true
         dataType: CombatantInfo
         fightIDs: [%(fight_id)s]
+        limit: 10000
       ) {
         data
       }
@@ -112,16 +126,17 @@ class WCLClient:
                 fight_id=fight_id,
             )
             r = (await self._query(events_query, "events"))["data"]["reportData"]["report"]
-            combatant_info = r["combatantInfo"]["data"]
+
+            if next_page_timestamp == 0:
+                combatant_info = r["combatantInfo"]["data"]
+                if r["rankings"]:
+                    rankings = r["rankings"]["data"]
+                deaths = [death for death in r["deaths"]["data"] if death["type"] == "death"]
+
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
 
-            if r["rankings"]:
-                rankings = r["rankings"]["data"]
-            else:
-                rankings = []
-
-        return events, combatant_info, rankings
+        return events, combatant_info, deaths, rankings
 
     async def _get_zones(self):
         if not self._zones:
@@ -158,13 +173,14 @@ class WCLClient:
         if fight_id == -1:
             fight_id = report_metadata["fights"][-1]["id"]
 
-        events, combatant_info, rankings = await self._fetch_events(
+        events, combatant_info, deaths, rankings = await self._fetch_events(
             report_id, fight_id, source_id
         )
 
         return Report(
             source,
             events,
+            deaths,
             rankings,
             combatant_info,
             encounters,

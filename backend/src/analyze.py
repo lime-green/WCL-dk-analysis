@@ -349,7 +349,11 @@ class RuneTracker(BaseAnalyzer):
         if self.rune_grace_wasted < 5000:
             return 1
         if self.rune_grace_wasted < 10000:
+            return 0.75
+        if self.rune_grace_wasted < 15000:
             return 0.5
+        if self.rune_grace_wasted < 20000:
+            return 0.25
         return 0
 
     def _serialize(self, timestamp):
@@ -467,8 +471,10 @@ class RPAnalyzer(BaseAnalyzer):
     def score(self):
         if self._sum < 100:
             return 1
-        if self._sum < 200:
+        if self._sum < 150:
             return 0.5
+        if self._sum < 200:
+            return 0.25
         return 0
 
     def report(self):
@@ -516,7 +522,10 @@ class UAAnalyzer(BaseAnalyzer):
                 self._window.with_erw = True
             if (
                 event["type"] == "cast"
-                and event["ability"] == "Obliterate"
+                and (
+                    event["ability"] == "Obliterate"
+                    or (event["ability"] == "Howling Blast" and not event.get("consumes_rime"))
+                )
                 and not event["is_miss"]
             ):
                 self._window.oblits += 1
@@ -719,7 +728,11 @@ class GCDAnalyzer(BaseAnalyzer):
         if self.average_latency < 100:
             return 1
         if self.average_latency < 200:
+            return 0.75
+        if self.average_latency < 300:
             return 0.5
+        if self.average_latency < 400:
+            return 0.25
         return 0
 
     def report(self):
@@ -727,7 +740,6 @@ class GCDAnalyzer(BaseAnalyzer):
 
         return {
             "gcd_latency": {
-                "score": self.score(),
                 "average_latency": average_latency,
             }
         }
@@ -750,7 +762,8 @@ class DiseaseAnalyzer(BaseAnalyzer):
             )
             and event["target_is_boss"]
         ):
-            self._dropped_diseases_timestamp.append(event["timestamp"])
+            if not event["target_dies_at"] or (event["timestamp"] - event["target_dies_at"] > 10000):
+                self._dropped_diseases_timestamp.append(event["timestamp"])
 
     @property
     def num_diseases_dropped(self):
@@ -804,6 +817,8 @@ class RimeAnalyzer(BaseAnalyzer):
             self._num_used += 1
 
     def score(self):
+        if not self._num_total:
+            return 0
         return 1 * (self._num_used / self._num_total)
 
     def report(self):
@@ -898,25 +913,32 @@ class AnalysisScores(BaseAnalyzer):
         return sum((score.score * score.weight) / total for score in score_weights)
 
     def report(self):
-        gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 1)
+        gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 2)
         drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 2)
         km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
         speed_score = self.get_scores(gcd_score, drift_score, km_score)
 
-        ua_score = self.ScoreWeight(self.get_analyzer(UAAnalyzer).score(), 2)
-        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
+        ua_analyzer = self.get_analyzer(UAAnalyzer)
+        ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.possible_ua_windows)
+        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 3)
         hb_score = self.ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
         rp_score = self.ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 0.5)
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
         rotation_score = self.get_scores(ua_score, disease_score, hb_score, rp_score, rime_score)
 
-        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
         misc_score = self.get_scores(consume_score)
 
         total_score = self.get_scores(
-            self.ScoreWeight(speed_score, 2),
-            self.ScoreWeight(rotation_score, 2),
-            self.ScoreWeight(misc_score, 0.5)
+            gcd_score,
+            drift_score,
+            km_score,
+            ua_score,
+            disease_score,
+            hb_score,
+            rp_score,
+            rime_score,
+            consume_score,
         )
 
         return {
