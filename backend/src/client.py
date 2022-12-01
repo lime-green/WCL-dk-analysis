@@ -1,6 +1,7 @@
 import aiohttp
 import logging
 
+import sentry_sdk
 from report import Report, Source
 
 
@@ -14,11 +15,12 @@ class PrivateReport(WCLClientException):
 
 class WCLClient:
     base_url = "https://classic.warcraftlogs.com/api/v2/client"
+    _auth = None
+    _zones = None
 
     def __init__(self, client_id, client_secret):
         self._client_id = client_id
         self._client_secret = client_secret
-        self._auth = None
         self._session = None
 
     async def __aenter__(self):
@@ -64,7 +66,7 @@ class WCLClient:
 """
             % report_code
         )
-        return (await self._query(metadata_query))["data"]
+        return (await self._query(metadata_query, "metadata"))["data"]
 
     async def _fetch_events(self, report_code, fight_id, source_id):
         events = []
@@ -108,7 +110,7 @@ class WCLClient:
                 source_id=source_id,
                 fight_id=fight_id,
             )
-            r = (await self._query(events_query))["data"]["reportData"]["report"]
+            r = (await self._query(events_query, "events"))["data"]["reportData"]["report"]
             combatant_info = r["combatantInfo"]["data"]
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
@@ -120,21 +122,26 @@ class WCLClient:
 
         return events, combatant_info, rankings
 
-    async def query(self, report_id, fight_id, source_id):
-        encounter_query = """
-{
-    worldData {
-        zones {
-            encounters {
-                id
-                name
+    async def _get_zones(self):
+        if not self._zones:
+            encounter_query = """
+    {
+        worldData {
+            zones {
+                encounters {
+                    id
+                    name
+                }
             }
         }
     }
-}
-        """
+            """
+            zones = (await self._query(encounter_query, "zones"))["data"]["worldData"]["zones"]
+            self.__class__._zones = zones
+        return self._zones
 
-        zones = (await self._query(encounter_query))["data"]["worldData"]["zones"]
+    async def query(self, report_id, fight_id, source_id):
+        zones = await self._get_zones()
         encounters = [encounter for zone in zones for encounter in zone["encounters"]]
         metadata = await self._fetch_metadata(report_id)
         report_metadata = metadata["reportData"]["report"]
@@ -165,14 +172,15 @@ class WCLClient:
             report_metadata["fights"],
         )
 
-    async def _query(self, query):
+    async def _query(self, query, description):
         session = await self.session()
-        r = await session.post(
-            self.base_url,
-            json={"query": query},
-            headers=dict(Authorization=f"Bearer {self._auth}"),
-            raise_for_status=True,
-        )
+        with sentry_sdk.start_span(op="http", description=description) as t:
+            r = await session.post(
+                self.base_url,
+                json={"query": query},
+                headers=dict(Authorization=f"Bearer {self._auth}"),
+                raise_for_status=True,
+            )
         json = await r.json()
 
         if "errors" in json:
@@ -185,13 +193,15 @@ class WCLClient:
 
     async def session(self):
         if not self._auth:
-            r = await self._session.post(
-                "https://www.warcraftlogs.com/oauth/token",
-                auth=aiohttp.BasicAuth(self._client_id, self._client_secret),
-                data={"grant_type": "client_credentials"},
-                raise_for_status=True,
-            )
-            self._auth = (await r.json())["access_token"]
+            with sentry_sdk.start_span(op="http", description="auth"):
+                r = await self._session.post(
+                    "https://www.warcraftlogs.com/oauth/token",
+                    auth=aiohttp.BasicAuth(self._client_id, self._client_secret),
+                    data={"grant_type": "client_credentials"},
+                    raise_for_status=True,
+                )
+            # Set on class, to be re-used (valid for a year, so probably don't have to worry)
+            self.__class__._auth = (await r.json())["access_token"]
         return self._session
 
 
