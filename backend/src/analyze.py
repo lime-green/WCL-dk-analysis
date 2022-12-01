@@ -1,5 +1,7 @@
 import os
 from datetime import timedelta
+from typing import TypeVar, Type
+
 
 from rich.console import Console
 from rich.table import Table
@@ -11,6 +13,7 @@ from report import Fight, Report
 SHOULD_PRINT = os.environ.get("AWS_EXECUTION_ENV") is None
 
 console = Console(quiet=not SHOULD_PRINT)
+R = TypeVar("R")
 
 
 class BaseAnalyzer:
@@ -235,7 +238,7 @@ class RuneTracker(BaseAnalyzer):
             Rune("Unholy1", "Unholy"),
             Rune("Unholy2", "Unholy"),
         ]
-        self._rune_grace_wasted = 0
+        self.rune_grace_wasted = 0
         self.rune_spend_error = False
 
     def _spend_runes(self, num, runes, timestamp, convert=False):
@@ -329,7 +332,7 @@ class RuneTracker(BaseAnalyzer):
                 )
                 event["rune_grace_wasted"] = rune_grace_wasted
                 event["rune_spend_error"] = not spent
-                self._rune_grace_wasted += rune_grace_wasted
+                self.rune_grace_wasted += rune_grace_wasted
 
             if event["ability"] == "Blood Tap":
                 self.blood_tap(event["timestamp"])
@@ -340,7 +343,14 @@ class RuneTracker(BaseAnalyzer):
         event["runes"] = self._serialize(event["timestamp"])
 
     def print(self):
-        console.print(f"* You drifted runes by a total of {self._rune_grace_wasted} ms")
+        console.print(f"* You drifted runes by a total of {self.rune_grace_wasted} ms")
+
+    def score(self):
+        if self.rune_grace_wasted < 5000:
+            return 1
+        if self.rune_grace_wasted < 10000:
+            return 0.5
+        return 0
 
     def _serialize(self, timestamp):
         return [
@@ -356,7 +366,7 @@ class RuneTracker(BaseAnalyzer):
         return {
             "rune_drift": {
                 "indicator": "info",
-                "rune_drift_ms": self._rune_grace_wasted,
+                "rune_drift_ms": self.rune_grace_wasted,
             }
         }
 
@@ -422,6 +432,12 @@ class BuffTracker(BaseAnalyzer):
         s += " Flask of Endless Rage"
         console.print(s)
 
+    def score(self):
+        total_pots = max(2, self._pots_used)
+        pot_score = self._pots_used / total_pots * 0.5
+        flask_score = 0.5 if self._has_flask else 0
+        return pot_score + flask_score
+
     def report(self):
         return {
             "potion_usage": {
@@ -447,6 +463,13 @@ class RPAnalyzer(BaseAnalyzer):
         console.print(
             f"* Over-capped RP {self._count} times with a total of {self._sum} RP wasted"
         )
+
+    def score(self):
+        if self._sum < 100:
+            return 1
+        if self._sum < 200:
+            return 0.5
+        return 0
 
     def report(self):
         return {
@@ -502,6 +525,24 @@ class UAAnalyzer(BaseAnalyzer):
     def possible_ua_windows(self):
         return max(1 + (self._fight_end_time - 10000) // 63000, len(self._windows))
 
+    @property
+    def num_possible(self):
+        return max(self.num_actual, self.possible_ua_windows)
+
+    @property
+    def num_actual(self):
+        return len(self._windows)
+
+    def get_data(self):
+        return (
+            self.num_possible,
+            self.num_actual,
+            [
+                (window.with_erw, window.oblits, max(window.oblits, window.expected_oblits))
+                for window in self._windows
+            ]
+        )
+
     def print(self):
         color = (
             "[green]✓[/green]"
@@ -516,18 +557,28 @@ class UAAnalyzer(BaseAnalyzer):
         for window in self._windows:
             console.print(f"\t - {window}")
 
+    def score(self):
+        score = 0
+        score_per_window = 1 / self.num_possible
+
+        for window in self._windows:
+            score += score_per_window * (window.oblits / window.expected_oblits)
+        return score
+
     def report(self):
+        num_possible, num_actual, windows = self.get_data()
+
         return {
             "unbreakable_armor": {
-                "num_possible": max(len(self._windows), self.possible_ua_windows),
-                "num_actual": len(self._windows),
+                "num_possible": num_possible,
+                "num_actual": num_actual,
                 "windows": [
                     {
-                        "with_erw": window.with_erw,
-                        "num_actual": window.oblits,
-                        "num_possible": max(window.oblits, window.expected_oblits),
+                        "with_erw": with_erw,
+                        "num_actual": w_num_actual,
+                        "num_possible": w_num_possible,
                     }
-                    for window in self._windows
+                    for with_erw, w_num_actual, w_num_possible in windows
                 ],
             }
         }
@@ -569,7 +620,7 @@ class KMAnalyzer(BaseAnalyzer):
         else:
             console.print("* You did not use any Killing Machine procs")
 
-    def report(self):
+    def get_data(self):
         used_windows = [window for window in self._windows if window.used_timestamp]
         num_windows = len(self._windows)
         num_used = len(used_windows)
@@ -577,7 +628,18 @@ class KMAnalyzer(BaseAnalyzer):
             window.used_timestamp - window.gained_timestamp for window in used_windows
         ]
         avg_latency = sum(latencies) / len(latencies) if latencies else 0
+        return num_used, num_windows, avg_latency
 
+    def score(self):
+        num_used, num_windows, avg_latency = self.get_data()
+        if avg_latency < 2000:
+            return 1
+        if avg_latency < 2500:
+            return 0.5
+        return 0
+
+    def report(self):
+        num_used, num_windows, avg_latency = self.get_data()
         return {
             "killing_machine": {
                 "indicator": "info",
@@ -653,12 +715,19 @@ class GCDAnalyzer(BaseAnalyzer):
         average_latency = self.average_latency
         console.print(f"* Your average GCD usage delay was {average_latency:.2f} ms")
 
+    def score(self):
+        if self.average_latency < 100:
+            return 1
+        if self.average_latency < 200:
+            return 0.5
+        return 0
+
     def report(self):
         average_latency = self.average_latency
 
         return {
             "gcd_latency": {
-                "indicator": "info",
+                "score": self.score(),
                 "average_latency": average_latency,
             }
         }
@@ -707,6 +776,13 @@ class DiseaseAnalyzer(BaseAnalyzer):
         else:
             console.print("[green]✓[/green] You did not drop diseases")
 
+    def score(self):
+        if self.num_diseases_dropped == 0:
+            return 1
+        if self.num_diseases_dropped == 1:
+            return 0.5
+        return 0
+
     def report(self):
         return {
             "diseases_dropped": {
@@ -726,6 +802,9 @@ class RimeAnalyzer(BaseAnalyzer):
             self._num_total += 1
         if event.get("consumes_rime"):
             self._num_used += 1
+
+    def score(self):
+        return 1 * (self._num_used / self._num_total)
 
     def report(self):
         return {
@@ -764,6 +843,13 @@ class HowlingBlastAnalyzer(BaseAnalyzer):
                 "[green]✓[/green] You always used Howling Blast with rime or on 3+ targets"
             )
 
+    def score(self):
+        if self._bad_usages == 0:
+            return 1
+        if self._bad_usages == 1:
+            return 0.5
+        return 0
+
     def report(self):
         return {
             "howling_blast_bad_usages": {
@@ -790,6 +876,57 @@ class CoreAbilities(BaseAnalyzer):
                 event["is_core_cast"] = True
             else:
                 event["is_core_cast"] = False
+
+
+class AnalysisScores(BaseAnalyzer):
+    class ScoreWeight:
+        def __init__(self, score, weight):
+            self.score = score
+            self.weight = weight
+
+    def __init__(self, analyzers):
+        self._analyzers = {
+            analyzer.__class__: analyzer for analyzer in analyzers
+        }
+
+    def get_analyzer(self, cls: Type[R]) -> R:
+        return self._analyzers[cls]
+
+    @staticmethod
+    def get_scores(*score_weights):
+        total = sum(score.weight for score in score_weights)
+        return sum((score.score * score.weight) / total for score in score_weights)
+
+    def report(self):
+        gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 1)
+        drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 2)
+        km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
+        speed_score = self.get_scores(gcd_score, drift_score, km_score)
+
+        ua_score = self.ScoreWeight(self.get_analyzer(UAAnalyzer).score(), 2)
+        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
+        hb_score = self.ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
+        rp_score = self.ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 0.5)
+        rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
+        rotation_score = self.get_scores(ua_score, disease_score, hb_score, rp_score, rime_score)
+
+        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        misc_score = self.get_scores(consume_score)
+
+        total_score = self.get_scores(
+            self.ScoreWeight(speed_score, 2),
+            self.ScoreWeight(rotation_score, 2),
+            self.ScoreWeight(misc_score, 0.5)
+        )
+
+        return {
+            "analysis_scores": {
+                "speed_score": speed_score,
+                "rotation_score": rotation_score,
+                "misc_score": misc_score,
+                "total_score": total_score,
+            }
+        }
 
 
 class Analyzer:
@@ -914,6 +1051,7 @@ class Analyzer:
             CoreAbilities(),
             RimeAnalyzer(),
         ]
+        analyzers.append(AnalysisScores(analyzers))
 
         for event in self._events:
             for analyzer in analyzers:

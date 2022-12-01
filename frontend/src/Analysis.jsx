@@ -305,6 +305,23 @@ const Summary = () => {
     )
   }, [])
 
+  const formatScore = useCallback(score => {
+    let color = "red"
+    if (score > 0.8) {
+      color = "green"
+    } else if (score > 0.65) {
+      color = "yellow"
+    } else if (score > 0.5) {
+      color = "orange"
+    }
+
+    return (
+      <h2>
+        Analysis score: <span className={color}>{score.toFixed(2) * 100}</span>
+      </h2>
+    )
+  }, [])
+
   if (analysis.isLoading || analysis.error) {
     return;
   }
@@ -343,6 +360,9 @@ const Summary = () => {
           <span className={"hl"}>{formatTimestamp(fight.duration)}</span> (
           {formatRanking(fightRanking)})
         </div>
+      </div>
+      <div className={"total-score"}>
+        {formatScore(summary.analysis_scores.total_score)}
       </div>
       <div className={"fight-analysis"}>
         <h3>Speed</h3>
