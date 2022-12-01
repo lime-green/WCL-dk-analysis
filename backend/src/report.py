@@ -148,6 +148,8 @@ class Report:
         if ability_id in SPELL_TRANSLATIONS:
             return SPELL_TRANSLATIONS[ability_id]
 
+        if ability_id == 48266:
+            return "Blood Presence"
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
                 return ability["name"]
@@ -487,5 +489,4 @@ class Fight:
 
         if "waste" in event and event["resourceChangeType"] == 6:
             normalized_event["runic_power_waste"] = event["waste"] * 10
-
         return normalized_event

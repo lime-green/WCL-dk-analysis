@@ -519,19 +519,13 @@ class UAAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "unbreakable_armor": {
-                "indicator": "success"
-                if self.possible_ua_windows == len(self._windows)
-                else "fail",
-                "num_possible": self.possible_ua_windows,
+                "num_possible": max(len(self._windows), self.possible_ua_windows),
                 "num_actual": len(self._windows),
                 "windows": [
                     {
-                        "indicator": "success"
-                        if window.oblits == window.expected_oblits
-                        else "fail",
                         "with_erw": window.with_erw,
                         "num_actual": window.oblits,
-                        "num_possible": window.expected_oblits,
+                        "num_possible": max(window.oblits, window.expected_oblits),
                     }
                     for window in self._windows
                 ],
