@@ -510,9 +510,25 @@ class UAAnalyzer(BaseAnalyzer):
         self._windows = []
         self._fight_end_time = fight_end_time
 
+    def _get_expected_oblits(self, ua_start_time):
+        time_left = self._fight_end_time - ua_start_time
+
+        if time_left >= 16000:
+            return 5
+        if time_left >= 14500:
+            return 4
+        if time_left >= 10500:
+            return 3
+        if time_left >= 5000:
+            return 2
+        if time_left >= 2500:
+            return 1
+        return 0
+
     def add_event(self, event):
         if event["type"] == "applybuff" and event["ability"] == "Unbreakable Armor":
-            self._window = self.Window(5)
+            expected_oblits = self._get_expected_oblits(event["timestamp"])
+            self._window = self.Window(expected_oblits)
             self._windows.append(self._window)
         elif event["type"] == "removebuff" and event["ability"] == "Unbreakable Armor":
             self._window = None
@@ -908,7 +924,7 @@ class AnalysisScores(BaseAnalyzer):
         return self._analyzers[cls]
 
     @staticmethod
-    def get_scores(*score_weights):
+    def _get_scores(*score_weights):
         total = sum(score.weight for score in score_weights)
         return sum((score.score * score.weight) / total for score in score_weights)
 
@@ -916,20 +932,20 @@ class AnalysisScores(BaseAnalyzer):
         gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 2)
         drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 2)
         km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
-        speed_score = self.get_scores(gcd_score, drift_score, km_score)
+        speed_score = self._get_scores(gcd_score, drift_score, km_score)
 
         ua_analyzer = self.get_analyzer(UAAnalyzer)
-        ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.possible_ua_windows)
+        ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
         disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 3)
         hb_score = self.ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
         rp_score = self.ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 0.5)
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        rotation_score = self.get_scores(ua_score, disease_score, hb_score, rp_score, rime_score)
+        rotation_score = self._get_scores(ua_score, disease_score, hb_score, rp_score, rime_score)
 
         consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
-        misc_score = self.get_scores(consume_score)
+        misc_score = self._get_scores(consume_score)
 
-        total_score = self.get_scores(
+        total_score = self._get_scores(
             gcd_score,
             drift_score,
             km_score,
