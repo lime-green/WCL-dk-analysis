@@ -346,15 +346,7 @@ class RuneTracker(BaseAnalyzer):
         console.print(f"* You drifted runes by a total of {self.rune_grace_wasted} ms")
 
     def score(self):
-        if self.rune_grace_wasted < 5000:
-            return 1
-        if self.rune_grace_wasted < 10000:
-            return 0.75
-        if self.rune_grace_wasted < 15000:
-            return 0.5
-        if self.rune_grace_wasted < 20000:
-            return 0.25
-        return 0
+        return max(0.0, 1 - self.rune_grace_wasted * 0.000025)
 
     def _serialize(self, timestamp):
         return [
