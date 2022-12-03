@@ -159,6 +159,10 @@ class Report:
 
         if ability_id == 48266:
             return "Blood Presence"
+        if ability_id == 48265:
+            return "Unholy Presence"
+        if ability_id == 48263:
+            return "Frost Presence"
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
                 return ability["name"]
@@ -185,6 +189,12 @@ class Report:
             return "Unknown"
 
     def get_ability_icon(self, ability_id: int):
+        if ability_id == 48266:
+            return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_bloodpresence.jpg"
+        if ability_id == 48265:
+            return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_unholypresence.jpg"
+        if ability_id == 48263:
+            return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_frostpresence.jpg"
         if ability_id == 51271:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_armor_helm_plate_naxxramas_raidwarrior_c_01.jpg"
         if ability_id == 50842:
