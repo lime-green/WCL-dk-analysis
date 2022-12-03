@@ -581,7 +581,7 @@ class UAAnalyzer(BaseAnalyzer):
         for window in self._windows:
             num_expected = window.expected_oblits
             if num_expected:
-                score += score_per_window * (window.oblits / window.expected_oblits)
+                score += score_per_window * (window.oblits / window.expected_oblits) ** 2
             else:
                 score += score_per_window
         return score
