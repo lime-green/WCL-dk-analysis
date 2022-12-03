@@ -1,4 +1,5 @@
 import itertools
+import logging
 from dataclasses import dataclass
 
 
@@ -172,7 +173,7 @@ class Report:
                 return "Flask of Stoneblood"
             if ability_id == 25898:
                 return "Greater Blessing of Kings"
-            if ability_id in (57371, 57399):
+            if ability_id in (57371, 57399, 57079):
                 return "Well Fed"
             if ability_id == 24383:
                 return "Swiftness of Zanza"
@@ -180,7 +181,8 @@ class Report:
                 return "Heroic Presence"
             if ability_id == 393387:
                 return "Leader of the Pack"
-            raise Exception(f"No ability name found for id: {ability_id}")
+            logging.exception(f"No ability name found for id: {ability_id}")
+            return "Unknown"
 
     def get_ability_icon(self, ability_id: int):
         if ability_id == 51271:
@@ -204,7 +206,7 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_alchemy_endlessflask_05.jpg"
             if ability_id == 25898:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_magic_greaterblessingofkings.jpg"
-            if ability_id in (57371, 57399):
+            if ability_id in (57371, 57399, 57079):
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
             if ability_id == 24383:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
@@ -212,7 +214,8 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_helmet_21.jpg"
             if ability_id == 393387:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_unyeildingstamina.jpg"
-            raise Exception(f"No ability icon found for id: {ability_id}")
+            logging.exception(f"No ability icon found for id: {ability_id}")
+            return "https://wow.zamimg.com/images/wow/icons/large/trade_engineering.jpg"
 
     def get_ability_type(self, ability_id: int):
         for ability in self._abilities:
