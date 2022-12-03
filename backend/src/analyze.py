@@ -579,7 +579,11 @@ class UAAnalyzer(BaseAnalyzer):
         score_per_window = 1 / self.num_possible
 
         for window in self._windows:
-            score += score_per_window * (window.oblits / window.expected_oblits)
+            num_expected = window.expected_oblits
+            if num_expected:
+                score += score_per_window * (window.oblits / window.expected_oblits)
+            else:
+                score += score_per_window
         return score
 
     def report(self):
