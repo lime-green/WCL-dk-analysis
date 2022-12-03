@@ -80,7 +80,7 @@ class Report:
         }
         self._actors = {actor["id"]: actor for actor in actors}
         self._abilities = abilities
-        self._fights = fights
+        self._fights = {fight["id"]: fight for fight in fights}
 
     def _parse_rankings(self, rankings):
         ret = {}
@@ -113,38 +113,35 @@ class Report:
         if fight_id == -1:
             fight_id = self._fights[-1]["id"]
 
-        for fight in self._fights:
-            # Assumes one successful fight per encounter
-            if fight["id"] == fight_id:
-                combatant_info = [
-                    c for c in self._combatant_info if c["fight"] == fight["id"]
-                ]
+        fight = self._fights[fight_id]
+        combatant_info = [
+            c for c in self._combatant_info if c["fight"] == fight["id"]
+        ]
 
-                fight_rankings = self._rankings.get(fight["id"], {})
-                for player_ranking in fight_rankings.get("player_rankings", []):
-                    if player_ranking["name"] == self.source.name:
-                        fight_rankings = {
-                            "player_ranking": player_ranking,
-                            "fight_ranking": fight_rankings["fight_ranking"],
-                        }
-                        break
+        fight_rankings = self._rankings.get(fight["id"], {})
+        for player_ranking in fight_rankings.get("player_rankings", []):
+            if player_ranking["name"] == self.source.name:
+                fight_rankings = {
+                    "player_ranking": player_ranking,
+                    "fight_ranking": fight_rankings["fight_ranking"],
+                }
+                break
 
-                encounter = self._encounters.get(fight["encounterID"])
-                if not encounter:
-                    actor_id = fight["enemyNPCs"][0]["id"]
-                    encounter = Encounter(0, self.get_actor_name(actor_id))
+        encounter = self._encounters.get(fight["encounterID"])
+        if not encounter:
+            actor_id = fight["enemyNPCs"][0]["id"]
+            encounter = Encounter(0, self.get_actor_name(actor_id))
 
-                return Fight(
-                    self,
-                    encounter,
-                    fight["startTime"],
-                    fight["endTime"],
-                    [event for event in self._events if fight["id"] == event["fight"]],
-                    fight_rankings,
-                    combatant_info,
-                )
-        else:
-            raise Exception(f"No fight found with ID: {fight_id}")
+        return Fight(
+            self,
+            fight_id,
+            encounter,
+            fight["startTime"],
+            fight["endTime"],
+            [event for event in self._events if fight["id"] == event["fight"]],
+            fight_rankings,
+            combatant_info,
+        )
 
     def get_actor_name(self, actor_id: int):
         return self._actors[actor_id]["name"]
@@ -229,6 +226,7 @@ class Fight:
     def __init__(
         self,
         report: Report,
+        fight_id,
         encounter: Encounter,
         start_time: int,
         end_time: int,
@@ -236,6 +234,7 @@ class Fight:
         rankings,
         combatant_info,
     ):
+        self._fight_id = fight_id
         self._report = report
         self.encounter = encounter
         self._global_start_time = start_time

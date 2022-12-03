@@ -361,7 +361,6 @@ class RuneTracker(BaseAnalyzer):
     def report(self):
         return {
             "rune_drift": {
-                "indicator": "info",
                 "rune_drift_ms": self.rune_grace_wasted,
             }
         }
@@ -472,7 +471,6 @@ class RPAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "runic_power": {
-                "indicator": "info",
                 "overcap_times": self._count,
                 "overcap_sum": self._sum,
             }
@@ -544,6 +542,8 @@ class UAAnalyzer(BaseAnalyzer):
 
     @property
     def num_possible(self):
+        if self._windows and not self._windows[-1].expected_oblits:
+            return max(self.num_actual, self.possible_ua_windows-1)
         return max(self.num_actual, self.possible_ua_windows)
 
     @property
@@ -653,17 +653,28 @@ class KMAnalyzer(BaseAnalyzer):
 
     def score(self):
         num_used, num_windows, avg_latency = self.get_data()
-        if avg_latency < 2000:
+        if avg_latency < 1800:
             return 1
-        if avg_latency < 2500:
+        if avg_latency < 1900:
+            return 0.9
+        if avg_latency < 2000:
+            return 0.8
+        if avg_latency < 2100:
+            return 0.7
+        if avg_latency < 2200:
+            return 0.6
+        if avg_latency < 2300:
             return 0.5
+        if avg_latency < 2500:
+            return 0.4
+        if avg_latency < 3000:
+            return 0.2
         return 0
 
     def report(self):
         num_used, num_windows, avg_latency = self.get_data()
         return {
             "killing_machine": {
-                "indicator": "info",
                 "num_used": num_used,
                 "num_total": num_windows,
                 "avg_latency": avg_latency,
@@ -737,15 +748,7 @@ class GCDAnalyzer(BaseAnalyzer):
         console.print(f"* Your average GCD usage delay was {average_latency:.2f} ms")
 
     def score(self):
-        if self.average_latency < 100:
-            return 1
-        if self.average_latency < 200:
-            return 0.75
-        if self.average_latency < 300:
-            return 0.5
-        if self.average_latency < 400:
-            return 0.25
-        return 0
+        return max(0, 1 - 0.0017 * self.average_latency)
 
     def report(self):
         average_latency = self.average_latency
@@ -811,7 +814,6 @@ class DiseaseAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "diseases_dropped": {
-                "indicator": "success" if self.num_diseases_dropped == 0 else "fail",
                 "num_diseases_dropped": self.num_diseases_dropped,
             }
         }
@@ -880,7 +882,6 @@ class HowlingBlastAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "howling_blast_bad_usages": {
-                "indicator": "success" if not self._bad_usages else "fail",
                 "num_bad_usages": self._bad_usages,
             }
         }
