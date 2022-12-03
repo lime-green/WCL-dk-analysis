@@ -162,6 +162,8 @@ class Report:
             if ability["gameID"] == ability_id:
                 return ability["name"]
         else:
+            if ability_id == 53748:
+                return "Mighty Strength"
             if ability_id == 48470:
                 return "Gift of the Wild"
             if ability_id == 53760:
@@ -195,6 +197,8 @@ class Report:
                     f'https://wow.zamimg.com/images/wow/icons/large/{ability["icon"]}'
                 )
         else:
+            if ability_id == 53748:
+                return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_165.jpg"
             if ability_id == 48470:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_giftofthewild.jpg"
             if ability_id == 53760:
