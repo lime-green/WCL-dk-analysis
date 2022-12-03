@@ -22,8 +22,10 @@
       const config = { attributes: false, childList: true, subtree: true };
       new MutationObserver(() => {
         adjust_iframe_height();
+        // if it loads too fast, the event will get ignored
+        setTimeout(adjust_iframe_height, 100)
       }).observe(document.body, config);
-      addEventListener("load", adjust_iframe_height);
+      addEventListener("load", () => adjust_iframe_height);
       addEventListener("resize", adjust_iframe_height);
     </script>
   </body>
