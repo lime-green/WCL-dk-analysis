@@ -125,13 +125,17 @@ class WCLClient:
                 source_id=source_id,
                 fight_id=fight_id,
             )
-            r = (await self._query(events_query, "events"))["data"]["reportData"]["report"]
+            r = (await self._query(events_query, "events"))["data"]["reportData"][
+                "report"
+            ]
 
             if next_page_timestamp == 0:
                 combatant_info = r["combatantInfo"]["data"]
                 if r["rankings"]:
                     rankings = r["rankings"]["data"]
-                deaths = [death for death in r["deaths"]["data"] if death["type"] == "death"]
+                deaths = [
+                    death for death in r["deaths"]["data"] if death["type"] == "death"
+                ]
 
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
@@ -152,7 +156,9 @@ class WCLClient:
         }
     }
             """
-            zones = (await self._query(encounter_query, "zones"))["data"]["worldData"]["zones"]
+            zones = (await self._query(encounter_query, "zones"))["data"]["worldData"][
+                "zones"
+            ]
             self.__class__._zones = zones
         return self._zones
 
@@ -171,7 +177,11 @@ class WCLClient:
             raise Exception("Character not found")
 
         if fight_id == -1:
-            boss_fights = [fight for fight in report_metadata["fights"] if fight["encounterID"] != 0]
+            boss_fights = [
+                fight
+                for fight in report_metadata["fights"]
+                if fight["encounterID"] != 0
+            ]
             fight_id = boss_fights[-1]["id"]
 
         events, combatant_info, deaths, rankings = await self._fetch_events(
@@ -192,7 +202,7 @@ class WCLClient:
 
     async def _query(self, query, description):
         session = await self.session()
-        with sentry_sdk.start_span(op="http", description=description) as t:
+        with sentry_sdk.start_span(op="http", description=description):
             r = await session.post(
                 self.base_url,
                 json={"query": query},
@@ -204,7 +214,10 @@ class WCLClient:
         if "errors" in json:
             logging.error(json["errors"])
 
-            if json["errors"][0]["message"] == "You do not have permission to view this report.":
+            if (
+                json["errors"][0]["message"]
+                == "You do not have permission to view this report."
+            ):
                 raise PrivateReport
 
         return json

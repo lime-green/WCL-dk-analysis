@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-from typing import TypeVar, Type
+from typing import Optional, TypeVar, Type
 
 
 from rich.console import Console
@@ -25,6 +25,90 @@ class BaseAnalyzer:
 
     def report(self):
         return {}
+
+
+class DeadZoneAnalyzer(BaseAnalyzer):
+    MELEE_ABILITIES = {
+        "Melee",
+        "Obliterate",
+        "Frost Strike",
+        "Blood Strike",
+    }
+
+    class DeadZone:
+        def __init__(self, last_event, curr_event):
+            self._last_event = last_event
+            self._curr_event = curr_event
+            self.start = last_event["timestamp"] + 1
+            self.end = curr_event["timestamp"]
+
+        def __contains__(self, item):
+            return self.start <= item <= self.end
+
+    def __init__(self, fight: Fight):
+        self._fight = fight
+        self._dead_zones = []
+        self._last_event = None
+        self._checker = {
+            "Loatheb": self._check_loatheb,
+            "Thaddius": self._check_thaddius,
+        }.get(self._fight.encounter.name)
+        self._encounter_name = self._fight.encounter.name
+
+    def _check_thaddius(self, event):
+        if event["type"] not in ("cast", "damage"):
+            return
+
+        if event.get("target") not in ("Thaddius", "Stalagg", "Feugen"):
+            return
+
+        if event["source"] != self._fight.source.name:
+            return
+
+        if self._last_event and self._last_event["target"] != event["target"]:
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
+            print("last", self._last_event)
+            print("curr", event)
+
+        self._last_event = event
+
+    def _check_loatheb(self, event):
+        if event.get("target") != "Loatheb":
+            return
+
+        if event["type"] != "cast" or event["ability"] not in self.MELEE_ABILITIES:
+            return
+
+        if event["source"] != self._fight.source.name:
+            return
+
+        if (
+            self._last_event
+            and event["timestamp"] - self._last_event["timestamp"] > 2000
+        ):
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
+
+        self._last_event = event
+
+    def add_event(self, event):
+        if not self._checker:
+            return
+
+        return self._checker(event)
+
+    def get_recent_dead_zone(self, end) -> Optional[DeadZone]:
+        for dead_zone in reversed(self._dead_zones):
+            # returns the closest dead-zone
+            if dead_zone.start <= end:
+                return dead_zone
+        return None
+
+    def decorate_event(self, event):
+        dead_zone = self.get_recent_dead_zone(event["timestamp"])
+        event["in_dead_zone"] = dead_zone and event["timestamp"] in dead_zone
+        event["recent_dead_zone"] = dead_zone and (dead_zone.start, dead_zone.end)
 
 
 class EventsTable:
@@ -321,24 +405,29 @@ class RuneTracker(BaseAnalyzer):
     def add_event(self, event):
         event["runes_before"] = self._serialize(event["timestamp"])
 
-        if event["type"] == "removebuff" and event["ability"] == "Blood Tap":
-            self.stop_blood_tap()
-
         if event["type"] == "cast":
             if event.get("rune_cost"):
                 spent, rune_grace_wasted = self.spend(
                     event["timestamp"],
                     **event["rune_cost"],
                 )
-                event["rune_grace_wasted"] = rune_grace_wasted
                 event["rune_spend_error"] = not spent
-                self.rune_grace_wasted += rune_grace_wasted
+
+                if not event["in_dead_zone"] and (
+                    not event["recent_dead_zone"]
+                    or event["timestamp"] - event["recent_dead_zone"][1] > 7500
+                ):
+                    event["rune_grace_wasted"] = rune_grace_wasted
+                    self.rune_grace_wasted += rune_grace_wasted
 
             if event["ability"] == "Blood Tap":
                 self.blood_tap(event["timestamp"])
 
             if event["ability"] == "Empower Rune Weapon":
                 self.erw(event["timestamp"])
+
+        if event["type"] == "removebuff" and event["ability"] == "Blood Tap":
+            self.stop_blood_tap()
 
         event["runes"] = self._serialize(event["timestamp"])
 
@@ -530,7 +619,10 @@ class UAAnalyzer(BaseAnalyzer):
                 event["type"] == "cast"
                 and (
                     event["ability"] == "Obliterate"
-                    or (event["ability"] == "Howling Blast" and not event.get("consumes_rime"))
+                    or (
+                        event["ability"] == "Howling Blast"
+                        and not event.get("consumes_rime")
+                    )
                 )
                 and not event["is_miss"]
             ):
@@ -543,7 +635,7 @@ class UAAnalyzer(BaseAnalyzer):
     @property
     def num_possible(self):
         if self._windows and not self._windows[-1].expected_oblits:
-            return max(self.num_actual, self.possible_ua_windows-1)
+            return max(self.num_actual, self.possible_ua_windows - 1)
         return max(self.num_actual, self.possible_ua_windows)
 
     @property
@@ -555,9 +647,13 @@ class UAAnalyzer(BaseAnalyzer):
             self.num_possible,
             self.num_actual,
             [
-                (window.with_erw, window.oblits, max(window.oblits, window.expected_oblits))
+                (
+                    window.with_erw,
+                    window.oblits,
+                    max(window.oblits, window.expected_oblits),
+                )
                 for window in self._windows
-            ]
+            ],
         )
 
     def print(self):
@@ -581,7 +677,9 @@ class UAAnalyzer(BaseAnalyzer):
         for window in self._windows:
             num_expected = window.expected_oblits
             if num_expected:
-                score += score_per_window * (window.oblits / window.expected_oblits) ** 2
+                score += (
+                    score_per_window * (window.oblits / window.expected_oblits) ** 2
+                )
             else:
                 score += score_per_window
         return score
@@ -696,6 +794,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Berserking",
         "Indestructible",
         "Deathchill",
+        "Melee",
     }
 
     def __init__(self):
@@ -708,32 +807,38 @@ class GCDAnalyzer(BaseAnalyzer):
 
         if self._last_event is None:
             offset = event["timestamp"]
+            last_timestamp = 0
         else:
-            offset = event["timestamp"] - self._last_event["timestamp"]
+            if event["recent_dead_zone"]:
+                if event["in_dead_zone"]:
+                    last_timestamp = event["timestamp"]
+                else:
+                    last_timestamp = max(
+                        event["recent_dead_zone"][1], self._last_event["timestamp"]
+                    )
+            else:
+                last_timestamp = self._last_event["timestamp"]
+
+            offset = event["timestamp"] - last_timestamp
 
         event["gcd_offset"] = offset
         event["has_gcd"] = event["ability"] not in self.NO_GCD
 
         if event["has_gcd"]:
-            self._gcds.append(event["timestamp"])
+            self._gcds.append((event["timestamp"], last_timestamp))
             self._last_event = event
 
     @property
     def latencies(self):
-        last_timestamp = None
         latencies = []
 
-        for timestamp in self._gcds:
-            if last_timestamp is None:
-                timestamp_diff = timestamp
-            else:
-                timestamp_diff = timestamp - last_timestamp
+        for timestamp, last_timestamp in self._gcds:
+            timestamp_diff = timestamp - last_timestamp
 
             # don't handle spell GCD for now
             latency = timestamp_diff - 1500
             if latency > 0:
                 latencies.append(latency)
-            last_timestamp = timestamp
 
         return latencies
 
@@ -776,8 +881,11 @@ class DiseaseAnalyzer(BaseAnalyzer):
                 "Frost Fever",
             )
             and event["target_is_boss"]
+            and not event["in_dead_zone"]
         ):
-            if not event["target_dies_at"] or (event["timestamp"] - event["target_dies_at"] > 10000):
+            if not event["target_dies_at"] or (
+                event["timestamp"] - event["target_dies_at"] > 10000
+            ):
                 self._dropped_diseases_timestamp.append(event["timestamp"])
 
     @property
@@ -913,9 +1021,7 @@ class AnalysisScores(BaseAnalyzer):
             self.weight = weight
 
     def __init__(self, analyzers):
-        self._analyzers = {
-            analyzer.__class__: analyzer for analyzer in analyzers
-        }
+        self._analyzers = {analyzer.__class__: analyzer for analyzer in analyzers}
 
     def get_analyzer(self, cls: Type[R]) -> R:
         return self._analyzers[cls]
@@ -934,10 +1040,14 @@ class AnalysisScores(BaseAnalyzer):
         ua_analyzer = self.get_analyzer(UAAnalyzer)
         ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
         disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 3)
-        hb_score = self.ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
+        hb_score = self.ScoreWeight(
+            self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
+        )
         rp_score = self.ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 0.5)
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        rotation_score = self._get_scores(ua_score, disease_score, hb_score, rp_score, rime_score)
+        rotation_score = self._get_scores(
+            ua_score, disease_score, hb_score, rp_score, rime_score
+        )
 
         consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
         misc_score = self._get_scores(consume_score)
@@ -981,13 +1091,21 @@ class Analyzer:
 
         return True
 
+    def _analyze_dead_zones(self):
+        dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
+
+        for event in self._events:
+            dead_zone_analyzer.add_event(event)
+
+        for event in self._events:
+            dead_zone_analyzer.decorate_event(event)
+
+        return dead_zone_analyzer
+
     def _filter_events(self):
         events = []
 
         for i, event in enumerate(self._fight.events):
-            if event.get("abilityGameID") == 1:  # melee
-                continue
-
             # We're neither the source nor the target (eg: ghouls attacking boss)
             if (
                 event["sourceID"] != self._fight.source.id
@@ -998,7 +1116,6 @@ class Analyzer:
             # Don't really care about these
             if event["type"] in (
                 "applydebuffstack",
-                "refreshdebuff",
                 "damage",
                 "heal",
             ):
@@ -1022,7 +1139,7 @@ class Analyzer:
 
         for event in self._events:
             if (
-                (event["type"] == "cast" and event["ability"] != "Speed")
+                (event["type"] == "cast" and event["ability"] not in ("Speed", "Melee"))
                 or (
                     event["type"] == "applybuff"
                     and event["ability"] == "Killing Machine"
@@ -1034,6 +1151,11 @@ class Analyzer:
                 or (
                     event["type"] == "removedebuff"
                     and event["ability"] in ("Blood Plague", "Frost Fever")
+                    and not event["in_dead_zone"]
+                )
+                or (
+                    event["type"] in ("applydebuff", "refreshdebuff")
+                    and event["ability"] == "Fungal Creep"
                 )
             ):
                 events.append(event)
@@ -1047,6 +1169,7 @@ class Analyzer:
         combatant_info = self._fight.get_combatant_info(source_id)
         starting_auras = combatant_info.get("auras", [])
 
+        self._analyze_dead_zones()
         runes = RuneTracker()
         has_rune_error = self._has_rune_error()
         table = EventsTable()
@@ -1074,6 +1197,7 @@ class Analyzer:
             },
             starting_auras,
         )
+
         analyzers = [
             runes,
             KMAnalyzer(),

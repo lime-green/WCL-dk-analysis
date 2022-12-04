@@ -81,7 +81,9 @@ class Report:
         self._actors = {actor["id"]: actor for actor in actors}
         self._abilities = abilities
         self._fights = {fight["id"]: fight for fight in fights}
-        self._last_boss_fight = [fight for fight in fights if fight["encounterID"] != 0][-1]
+        self._last_boss_fight = [
+            fight for fight in fights if fight["encounterID"] != 0
+        ][-1]
 
     def _parse_rankings(self, rankings):
         ret = {}
@@ -115,9 +117,7 @@ class Report:
             fight_id = self._last_boss_fight["id"]
 
         fight = self._fights[fight_id]
-        combatant_info = [
-            c for c in self._combatant_info if c["fight"] == fight["id"]
-        ]
+        combatant_info = [c for c in self._combatant_info if c["fight"] == fight["id"]]
 
         fight_rankings = self._rankings.get(fight["id"], {})
         for player_ranking in fight_rankings.get("player_rankings", []):
@@ -209,7 +209,9 @@ class Report:
                 )
         else:
             if ability_id == 53748:
-                return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_165.jpg"
+                return (
+                    "https://wow.zamimg.com/images/wow/icons/large/inv_potion_165.jpg"
+                )
             if ability_id == 48470:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_giftofthewild.jpg"
             if ability_id == 53760:
@@ -219,7 +221,9 @@ class Report:
             if ability_id == 25898:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_magic_greaterblessingofkings.jpg"
             if ability_id in (57371, 57399, 57079):
-                return "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
+                return (
+                    "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
+                )
             if ability_id == 24383:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
             if ability_id in (28878, 6562):
@@ -484,7 +488,9 @@ class Fight:
             normalized_event["target_is_boss"] = self._report.get_is_boss_actor(
                 normalized_event["targetID"]
             )
-            normalized_event["target_dies_at"] = self._report.get_target_death(normalized_event["targetID"])
+            normalized_event["target_dies_at"] = self._report.get_target_death(
+                normalized_event["targetID"]
+            )
         if "abilityGameID" in event:
             normalized_event["ability"] = self._report.get_ability_name(
                 event["abilityGameID"]
