@@ -1043,10 +1043,9 @@ class AnalysisScores(BaseAnalyzer):
         hb_score = self.ScoreWeight(
             self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
         )
-        rp_score = self.ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 0.5)
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
         rotation_score = self._get_scores(
-            ua_score, disease_score, hb_score, rp_score, rime_score
+            ua_score, disease_score, hb_score, rime_score
         )
 
         consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
@@ -1059,7 +1058,6 @@ class AnalysisScores(BaseAnalyzer):
             ua_score,
             disease_score,
             hb_score,
-            rp_score,
             rime_score,
             consume_score,
         )
