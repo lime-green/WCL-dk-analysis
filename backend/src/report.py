@@ -182,7 +182,7 @@ class Report:
                 return "Flask of Stoneblood"
             if ability_id == 25898:
                 return "Greater Blessing of Kings"
-            if ability_id in (57371, 57399, 57079):
+            if ability_id in (57371, 57399, 57079, 65414):
                 return "Well Fed"
             if ability_id == 24383:
                 return "Swiftness of Zanza"
@@ -225,7 +225,7 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_alchemy_endlessflask_05.jpg"
             if ability_id == 25898:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_magic_greaterblessingofkings.jpg"
-            if ability_id in (57371, 57399, 57079):
+            if ability_id in (57371, 57399, 57079, 65414):
                 return (
                     "https://wow.zamimg.com/images/wow/icons/large/spell_misc_food.jpg"
                 )
