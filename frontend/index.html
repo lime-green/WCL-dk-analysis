@@ -16,7 +16,8 @@
     <script>
       function adjust_iframe_height() {
         const height = document.body.offsetHeight;
-        parent.postMessage(height, "*");
+        // add 1 for a bug on windows where it shows a scrollbar
+        parent.postMessage(height + 1, "*");
       }
 
       const config = { attributes: false, childList: true, subtree: true };
