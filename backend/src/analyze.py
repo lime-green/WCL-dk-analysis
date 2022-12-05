@@ -1033,7 +1033,7 @@ class AnalysisScores(BaseAnalyzer):
 
     def report(self):
         gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 2)
-        drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 2)
+        drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
         km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
         speed_score = self._get_scores(gcd_score, drift_score, km_score)
 
