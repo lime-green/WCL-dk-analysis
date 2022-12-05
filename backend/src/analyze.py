@@ -1039,7 +1039,7 @@ class AnalysisScores(BaseAnalyzer):
 
         ua_analyzer = self.get_analyzer(UAAnalyzer)
         ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
-        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 3)
+        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
         hb_score = self.ScoreWeight(
             self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
         )
