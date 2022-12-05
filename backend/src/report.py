@@ -81,9 +81,14 @@ class Report:
         self._actors = {actor["id"]: actor for actor in actors}
         self._abilities = abilities
         self._fights = {fight["id"]: fight for fight in fights}
-        self._last_boss_fight = [
+
+        _boss_fights = [
             fight for fight in fights if fight["encounterID"] != 0
-        ][-1]
+        ]
+        if _boss_fights:
+            self._last_fight = _boss_fights[-1]
+        else:
+            self._last_fight = fights[-1]
 
     def _parse_rankings(self, rankings):
         ret = {}
@@ -114,7 +119,7 @@ class Report:
 
     def get_fight(self, fight_id):
         if fight_id == -1:
-            fight_id = self._last_boss_fight["id"]
+            fight_id = self._last_fight["id"]
 
         fight = self._fights[fight_id]
         combatant_info = [c for c in self._combatant_info if c["fight"] == fight["id"]]

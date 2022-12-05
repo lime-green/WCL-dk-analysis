@@ -182,7 +182,10 @@ class WCLClient:
                 for fight in report_metadata["fights"]
                 if fight["encounterID"] != 0
             ]
-            fight_id = boss_fights[-1]["id"]
+            if boss_fights:
+                fight_id = boss_fights[-1]["id"]
+            else:
+                fight_id = report_metadata["fights"][-1]["id"]
 
         events, combatant_info, deaths, rankings = await self._fetch_events(
             report_id, fight_id, source_id
