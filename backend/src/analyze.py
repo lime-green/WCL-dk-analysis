@@ -725,7 +725,10 @@ class UAAnalyzer(BaseAnalyzer):
             else:
                 total_weight += 5
 
-        return score / total_weight
+        if total_weight:
+            return score / total_weight
+        else:
+            return 1
 
     def report(self):
         num_possible, num_actual, windows = self.get_data()
