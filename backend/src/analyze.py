@@ -585,13 +585,21 @@ class UAAnalyzer(BaseAnalyzer):
             self.expected_oblits = expected_oblits
             self.with_erw = with_erw
 
+        @property
+        def num_expected(self):
+            return max(self.expected_oblits, self.oblits)
+
+        @property
+        def num_actual(self):
+            return self.oblits
+
         def __str__(self):
             s = (
                 "[green]✓[/green] "
-                if self.oblits == self.expected_oblits
+                if self.oblits == self.num_expected
                 else "[red]x[/red] "
             )
-            s += f"Hit {self.oblits} of {self.expected_oblits} obliterates"
+            s += f"Hit {self.oblits} of {self.num_expected} obliterates"
             if self.with_erw:
                 s += " (with ERW)"
             return s
@@ -646,7 +654,7 @@ class UAAnalyzer(BaseAnalyzer):
 
     @property
     def num_possible(self):
-        if self._windows and not self._windows[-1].expected_oblits:
+        if self._windows and not self._windows[-1].num_expected:
             return max(self.num_actual, self.possible_ua_windows - 1)
         return max(self.num_actual, self.possible_ua_windows)
 
@@ -661,8 +669,8 @@ class UAAnalyzer(BaseAnalyzer):
             [
                 (
                     window.with_erw,
-                    window.oblits,
-                    max(window.oblits, window.expected_oblits),
+                    window.num_actual,
+                    window.num_expected,
                 )
                 for window in self._windows
             ],
@@ -683,18 +691,27 @@ class UAAnalyzer(BaseAnalyzer):
             console.print(f"\t - {window}")
 
     def score(self):
+        total_weight = 0
         score = 0
-        score_per_window = 1 / self.num_possible
 
         for window in self._windows:
-            num_expected = window.expected_oblits
+            num_expected = window.num_expected
             if num_expected:
-                score += (
-                    score_per_window * (window.oblits / window.expected_oblits) ** 2
-                )
+                score += num_expected * (window.num_actual / num_expected) ** 2
+                total_weight += num_expected
+
+        # account for unused UAs
+        for i in range(0, self.possible_ua_windows - len(self._windows)):
+            # account for unused last UA
+            if i == 0:
+                possible_ua_start = (self.possible_ua_windows - 1) * 63000
+                num_expected = self._get_expected_oblits(possible_ua_start)
+                total_weight += num_expected
+            # account for all other unused mid-fight UAs
             else:
-                score += score_per_window
-        return score
+                total_weight += 5
+
+        return score / total_weight
 
     def report(self):
         num_possible, num_actual, windows = self.get_data()
@@ -1226,14 +1243,16 @@ class Analyzer:
 
         displayable_events = self.displayable_events
 
-        for event in displayable_events:
-            table.add_event(event)
-        table.print()
+        if SHOULD_PRINT:
+            for event in displayable_events:
+                table.add_event(event)
+            table.print()
 
         analysis = {"has_rune_spend_error": has_rune_error}
 
         for analyzer in analyzers:
-            analyzer.print()
+            if SHOULD_PRINT:
+                analyzer.print()
             analysis.update(**analyzer.report())
 
         return {
