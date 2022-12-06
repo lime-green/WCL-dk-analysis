@@ -53,8 +53,22 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             "Loatheb": self._check_loatheb,
             "Thaddius": self._check_thaddius,
             "Maexxna": self._check_maexxna,
+            "Kel'Thuzad": self._check_kelthuzad,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
+
+    def _check_kelthuzad(self, event):
+        if event["type"] not in ("removedebuff", "applydebuff"):
+            return
+
+        if event["ability"] != "Frost Blast":
+            return
+
+        if event["type"] == "applydebuff":
+            self._last_event = event
+        elif event["type"] == "removedebuff":
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
 
     def _check_maexxna(self, event):
         if event["type"] not in ("removedebuff", "applydebuff"):
@@ -897,8 +911,9 @@ class GCDAnalyzer(BaseAnalyzer):
 class DiseaseAnalyzer(BaseAnalyzer):
     DISEASE_DURATION_MS = 15000
 
-    def __init__(self, fight_end_time):
+    def __init__(self, encounter_name, fight_end_time):
         self._dropped_diseases_timestamp = []
+        self._encounter_name = encounter_name
         self._fight_end_time = fight_end_time
 
     def add_event(self, event):
@@ -910,7 +925,7 @@ class DiseaseAnalyzer(BaseAnalyzer):
                 "Frost Fever",
             )
             and event["target_is_boss"]
-            and not event["in_dead_zone"]
+            and (self._encounter_name != "Thaddius" or not event["in_dead_zone"])
         ):
             if not event["target_dies_at"] or (
                 event["timestamp"] - event["target_dies_at"] > 10000
@@ -1176,11 +1191,11 @@ class Analyzer:
                 or (
                     event["type"] == "removedebuff"
                     and event["ability"] in ("Blood Plague", "Frost Fever")
-                    and not event["in_dead_zone"]
+                    and (self._fight.encounter.name != "Thaddius" or not event["in_dead_zone"])
                 )
                 or (
                     event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
-                    and event["ability"] in ("Fungal Creep", "Web Spray")
+                    and event["ability"] in ("Fungal Creep", "Web Spray", "Frost Blast")
                 )
             ):
                 events.append(event)
@@ -1230,7 +1245,7 @@ class Analyzer:
             RPAnalyzer(),
             UAAnalyzer(self._fight.end_time),
             buff_tracker,
-            DiseaseAnalyzer(self._fight.end_time),
+            DiseaseAnalyzer(self._fight.encounter.name, self._fight.end_time),
             HowlingBlastAnalyzer(),
             CoreAbilities(),
             RimeAnalyzer(),
