@@ -82,9 +82,7 @@ class Report:
         self._abilities = abilities
         self._fights = {fight["id"]: fight for fight in fights}
 
-        _boss_fights = [
-            fight for fight in fights if fight["encounterID"] != 0
-        ]
+        _boss_fights = [fight for fight in fights if fight["encounterID"] != 0]
         if _boss_fights:
             self._last_fight = _boss_fights[-1]
         else:

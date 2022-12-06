@@ -52,8 +52,22 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         self._checker = {
             "Loatheb": self._check_loatheb,
             "Thaddius": self._check_thaddius,
+            "Maexxna": self._check_maexxna,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
+
+    def _check_maexxna(self, event):
+        if event["type"] not in ("removedebuff", "applydebuff"):
+            return
+
+        if event["ability"] != "Web Spray":
+            return
+
+        if event["type"] == "applydebuff":
+            self._last_event = event
+        elif event["type"] == "removedebuff":
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
 
     def _check_thaddius(self, event):
         if event["type"] not in ("cast", "damage"):
@@ -68,8 +82,6 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if self._last_event and self._last_event["target"] != event["target"]:
             dead_zone = self.DeadZone(self._last_event, event)
             self._dead_zones.append(dead_zone)
-            print("last", self._last_event)
-            print("curr", event)
 
         self._last_event = event
 
@@ -1044,9 +1056,7 @@ class AnalysisScores(BaseAnalyzer):
             self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
         )
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        rotation_score = self._get_scores(
-            ua_score, disease_score, hb_score, rime_score
-        )
+        rotation_score = self._get_scores(ua_score, disease_score, hb_score, rime_score)
 
         consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
         misc_score = self._get_scores(consume_score)
@@ -1152,8 +1162,8 @@ class Analyzer:
                     and not event["in_dead_zone"]
                 )
                 or (
-                    event["type"] in ("applydebuff", "refreshdebuff")
-                    and event["ability"] == "Fungal Creep"
+                    event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
+                    and event["ability"] in ("Fungal Creep", "Web Spray")
                 )
             ):
                 events.append(event)
