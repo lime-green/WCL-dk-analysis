@@ -889,7 +889,7 @@ class GCDAnalyzer(BaseAnalyzer):
     def average_latency(self):
         latencies = self.latencies
         # Don't count first GCD
-        return sum(latencies[1:]) / len(latencies[1:]) if latencies else 0
+        return sum(latencies[1:]) / len(latencies[1:]) if len(latencies) > 1 else 0
 
     def print(self):
         average_latency = self.average_latency
@@ -1191,7 +1191,10 @@ class Analyzer:
                 or (
                     event["type"] == "removedebuff"
                     and event["ability"] in ("Blood Plague", "Frost Fever")
-                    and (self._fight.encounter.name != "Thaddius" or not event["in_dead_zone"])
+                    and (
+                        self._fight.encounter.name != "Thaddius"
+                        or not event["in_dead_zone"]
+                    )
                 )
                 or (
                     event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
