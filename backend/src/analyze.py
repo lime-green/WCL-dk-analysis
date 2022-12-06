@@ -880,8 +880,8 @@ class GCDAnalyzer(BaseAnalyzer):
 
             # don't handle spell GCD for now
             latency = timestamp_diff - 1500
-            if latency > 0:
-                latencies.append(latency)
+            if latency > -50:
+                latencies.append(max(0, latency))
 
         return latencies
 
