@@ -931,7 +931,7 @@ class DiseaseAnalyzer(BaseAnalyzer):
             and (self._encounter_name != "Thaddius" or not event["in_dead_zone"])
         ):
             if not event["target_dies_at"] or (
-                event["timestamp"] - event["target_dies_at"] > 10000
+                event["target_dies_at"] - event["timestamp"] > 10000
             ):
                 self._dropped_diseases_timestamp.append(event["timestamp"])
 
