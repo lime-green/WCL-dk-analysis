@@ -841,6 +841,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Indestructible",
         "Deathchill",
         "Melee",
+        "Path of Illidan",
     }
 
     def __init__(self):
