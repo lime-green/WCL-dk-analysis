@@ -25,6 +25,7 @@ HIT_TYPES = {
     6: "GLANCING",
     7: "DODGE",
     8: "PARRY",
+    9: "DEFLECT",
     10: "IMMUNE",
     11: "MISSFIRE",
     12: "REFLECT",
