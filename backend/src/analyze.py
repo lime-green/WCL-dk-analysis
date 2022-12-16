@@ -646,7 +646,7 @@ class UAAnalyzer(BaseAnalyzer):
         elif event["type"] == "removebuff" and event["ability"] == "Unbreakable Armor":
             self._window = None
         elif self._window and not event.get("is_miss"):
-            if event["ability"] == "Empower Rune Weapon":
+            if event["type"] == "cast" and event["ability"] == "Empower Rune Weapon":
                 self._window.expected_oblits = 6
                 self._window.with_erw = True
             if (
