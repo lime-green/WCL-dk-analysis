@@ -315,7 +315,7 @@ class Rune:
     def stop_blood_tap(self):
         self.blood_tapped = False
 
-    def spend_death(self, timestamp: int, is_same_type: bool):
+    def spend_death(self, timestamp: int, convert_back: bool):
         if not self.can_spend_death(timestamp):
             return False, 0
 
@@ -323,7 +323,7 @@ class Rune:
         if not spend:
             return spend, rune_grace_wasted
 
-        if not is_same_type and not self.blood_tapped:
+        if convert_back and not self.blood_tapped:
             self.is_death = False
         return spend, rune_grace_wasted
 
@@ -357,7 +357,6 @@ class RuneTracker(BaseAnalyzer):
 
         spent = 0
         rune_grace_wasted = 0
-        rune_type = runes[0].type
 
         for rune in runes:
             if spent == num:
@@ -373,7 +372,7 @@ class RuneTracker(BaseAnalyzer):
                 break
             if rune.can_spend_death(timestamp):
                 # Ignore death rune_grace_wasted
-                rune.spend_death(timestamp, is_same_type=(rune.type == rune_type))
+                rune.spend_death(timestamp, convert_back=not convert)
                 spent += 1
 
                 # This handles the case where we use a death rune for a spell
@@ -393,8 +392,9 @@ class RuneTracker(BaseAnalyzer):
 
         return spent == num, rune_grace_wasted
 
-    def spend(self, timestamp: int, blood: int, frost: int, unholy: int):
-        blood_spend = self._spend_runes(blood, self.runes[0:2], timestamp, True)
+    def spend(self, ability, timestamp: int, blood: int, frost: int, unholy: int):
+        convert_blood = ability in ("Blood Strike", "Pestilence")
+        blood_spend = self._spend_runes(blood, self.runes[0:2], timestamp, convert_blood)
         frost_spend = self._spend_runes(frost, self.runes[2:4], timestamp)
         unholy_spend = self._spend_runes(unholy, self.runes[4:6], timestamp)
 
@@ -434,6 +434,7 @@ class RuneTracker(BaseAnalyzer):
         if event["type"] == "cast":
             if event.get("rune_cost"):
                 spent, rune_grace_wasted = self.spend(
+                    event["ability"],
                     event["timestamp"],
                     **event["rune_cost"],
                 )

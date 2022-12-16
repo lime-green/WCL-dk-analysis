@@ -54,6 +54,7 @@ SPELL_TRANSLATIONS = {
     49895: "Death Coil",
     49938: "Death and Decay",
     56815: "Rune Strike",
+    49941: "Blood Boil",
 }
 
 
