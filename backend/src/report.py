@@ -404,10 +404,10 @@ class Fight:
                         ):
                             if event["targetID"] != next_event["targetID"]:
                                 event["num_targets"] += 1
-
-                            is_miss = next_event["is_miss"]
-                            hit_type = next_event["hitType"]
-                            extra.update(is_miss=is_miss, hit_type=hit_type)
+                            else:  # only show misses on same target
+                                is_miss = next_event["is_miss"]
+                                hit_type = next_event["hitType"]
+                                extra.update(is_miss=is_miss, hit_type=hit_type)
                     if "is_miss" not in extra:
                         extra.update(is_miss=False, hit_type="NO_DAMAGE_EVENT")
 
