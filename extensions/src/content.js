@@ -76,7 +76,7 @@ function parseParams() {
   let fight = url.match(/fight=(\w+)/)[1]
   fight = fight === "last" ? -1 : fight
   const source = url.match(/source=(\d+)/)[1]
-  const report = url.match(/reports\/(\w+)[\/#]/)[1]
+  const report = url.match(/reports\/([:\w]+)[\/#]/)[1]
 
   return {fight, source, report}
 }
