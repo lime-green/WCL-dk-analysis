@@ -1183,6 +1183,9 @@ class Analyzer:
         events = []
 
         for event in self._events:
+            if event["type"] == "removedebuff" and not event["target_is_boss"]:
+                continue
+
             if (
                 (event["type"] == "cast" and event["ability"] not in ("Speed", "Melee"))
                 or (
