@@ -1245,6 +1245,7 @@ class Analyzer:
                 "Unholy Strength": "Unholy Strength",
                 "Skyflare Swiftness": "Skyflare Swiftness",
                 "Edward's Insight": "Edward's Insight",
+                "Loatheb's Shadow": "Loatheb's Shadow",
             },
             starting_auras,
         )
