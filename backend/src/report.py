@@ -471,9 +471,13 @@ class Fight:
             events.append(event)
         return events
 
+    def _normalize_time(self, timestamp):
+        if timestamp:
+            return timestamp - self._global_start_time
+
     def _normalize_event(self, event):
         normalized_event = {**event}
-        normalized_event["timestamp"] = event["timestamp"] - self._global_start_time
+        normalized_event["timestamp"] = self._normalize_time(event["timestamp"])
 
         if "abilityGameID" in event:
             normalized_event["ability_icon"] = (
@@ -493,9 +497,12 @@ class Fight:
             normalized_event["target_is_boss"] = self._report.get_is_boss_actor(
                 normalized_event["targetID"]
             )
-            normalized_event["target_dies_at"] = self._report.get_target_death(
-                normalized_event["targetID"]
+            normalized_event["target_dies_at"] = self._normalize_time(
+                self._report.get_target_death(
+                    normalized_event["targetID"]
+                )
             )
+
         if "abilityGameID" in event:
             normalized_event["ability"] = self._report.get_ability_name(
                 event["abilityGameID"]
