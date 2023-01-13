@@ -843,6 +843,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Deathchill",
         "Melee",
         "Path of Illidan",
+        "Anti-Magic Shell",
     }
 
     def __init__(self):
