@@ -844,6 +844,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Melee",
         "Path of Illidan",
         "Anti-Magic Shell",
+        "Unholy Frenzy",
     }
 
     def __init__(self):
@@ -1247,6 +1248,7 @@ class Analyzer:
                 "Skyflare Swiftness": "Skyflare Swiftness",
                 "Edward's Insight": "Edward's Insight",
                 "Loatheb's Shadow": "Loatheb's Shadow",
+                "Cinderglacier": "Cinderglacier",
             },
             starting_auras,
         )
