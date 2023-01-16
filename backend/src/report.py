@@ -190,6 +190,8 @@ class Report:
                 return "Heroic Presence"
             if ability_id in (393387, 24932):
                 return "Leader of the Pack"
+            if ability_id == 53762:
+                return "Indestructible"
             logging.exception(f"No ability name found for id: {ability_id}")
             return "Unknown"
 
@@ -235,6 +237,8 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_helmet_21.jpg"
             if ability_id in (393387, 24932):
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_unyeildingstamina.jpg"
+            if ability_id == 53762:
+                return "https://wow.zamimg.com/images/wow/icons/large/inv_alchemy_elixir_empty.jpg"
             logging.exception(f"No ability icon found for id: {ability_id}")
             return "https://wow.zamimg.com/images/wow/icons/large/trade_engineering.jpg"
 
