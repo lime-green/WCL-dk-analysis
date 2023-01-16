@@ -55,6 +55,10 @@ class AnalyzeResponse(BaseModel):
 async def analyze_fight(
     response: Response, report_id: str, fight_id: int, source_id: int
 ):
+    if report_id == "compare":
+        response.status_code = 400
+        return {"error": "Can not analyze while using the 'Compare' feature"}
+
     try:
         report = await fetch_report(report_id, fight_id, source_id)
     except PrivateReport:
