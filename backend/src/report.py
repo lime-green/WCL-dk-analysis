@@ -188,7 +188,7 @@ class Report:
                 return "Swiftness of Zanza"
             if ability_id in (28878, 6562):
                 return "Heroic Presence"
-            if ability_id == 393387:
+            if ability_id in (393387, 24932):
                 return "Leader of the Pack"
             logging.exception(f"No ability name found for id: {ability_id}")
             return "Unknown"
@@ -233,7 +233,7 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_potion_31.jpg"
             if ability_id in (28878, 6562):
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_helmet_21.jpg"
-            if ability_id == 393387:
+            if ability_id in (393387, 24932):
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_unyeildingstamina.jpg"
             logging.exception(f"No ability icon found for id: {ability_id}")
             return "https://wow.zamimg.com/images/wow/icons/large/trade_engineering.jpg"
@@ -474,6 +474,8 @@ class Fight:
     def _normalize_time(self, timestamp):
         if timestamp:
             return timestamp - self._global_start_time
+        else:
+            return 0
 
     def _normalize_event(self, event):
         normalized_event = {**event}
