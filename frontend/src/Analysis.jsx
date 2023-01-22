@@ -347,9 +347,9 @@ const Summary = () => {
 
   let fightRanking, playerRanking, dps
   if (Object.keys(fight.rankings).length !== 0) {
-    fightRanking = fight.rankings.fight_ranking.speed_percentile;
-    playerRanking = fight.rankings.player_ranking.rank_percentile;
-    dps = Math.round(fight.rankings.player_ranking.dps)
+    fightRanking = fight.rankings.fight_ranking?.speed_percentile || "n/a"
+    playerRanking = fight.rankings.player_ranking?.rank_percentile || "n/a"
+    dps = Math.round(fight.rankings.player_ranking?.dps) || "n/a"
   } else {
     fightRanking = "n/a"
     playerRanking = "n/a"
