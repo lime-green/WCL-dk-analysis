@@ -54,8 +54,22 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             "Thaddius": self._check_thaddius,
             "Maexxna": self._check_maexxna,
             "Kel'Thuzad": self._check_kelthuzad,
+            "Ignis the Furnace Master": self._check_ignis,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
+
+    def _check_ignis(self, event):
+        if event["type"] not in ("removedebuff", "applydebuff"):
+            return
+
+        if event["ability"] != "Slag Pot":
+            return
+
+        if event["type"] == "applydebuff":
+            self._last_event = event
+        elif event["type"] == "removedebuff":
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
 
     def _check_kelthuzad(self, event):
         if event["type"] not in ("removedebuff", "applydebuff"):
@@ -562,33 +576,42 @@ class BuffTracker(BaseAnalyzer):
 
 class RPAnalyzer(BaseAnalyzer):
     def __init__(self):
-        self._count = 0
-        self._sum = 0
+        self._count_wasted = 0
+        self._sum_wasted = 0
+        self._count_gained = 0
+        self._sum_gained = 0
 
     def add_event(self, event):
         if event["type"] == "cast" and event.get("runic_power_waste", 0) > 0:
-            self._count += 1
-            self._sum += event["runic_power_waste"] // 10
+            self._count_wasted += 1
+            self._sum_wasted += event["runic_power_waste"] // 10
+        if event["type"] == "resourcechange" and "runic_power_gained_ams" in event:
+            self._count_gained += 1
+            self._sum_gained += event["runic_power_gained_ams"] // 10
 
     def print(self):
         console.print(
-            f"* Over-capped RP {self._count} times with a total of {self._sum} RP wasted"
+            f"* Over-capped RP {self._count_wasted} times with a total of {self._sum_wasted} RP wasted"
         )
+        console.print(f"Gained RP {self._count_gained} times for a total of {self._sum_gained} RP")
 
     def score(self):
-        if self._sum < 100:
+        waste = self._sum_wasted - self._sum_gained
+        if waste < 150:
             return 1
-        if self._sum < 150:
+        if waste < 200:
             return 0.5
-        if self._sum < 200:
+        if waste < 250:
             return 0.25
         return 0
 
     def report(self):
         return {
             "runic_power": {
-                "overcap_times": self._count,
-                "overcap_sum": self._sum,
+                "overcap_times": self._count_wasted,
+                "overcap_sum": self._sum_wasted,
+                "gained_times": self._count_gained,
+                "gained_sum": self._sum_gained,
             }
         }
 
@@ -1185,9 +1208,6 @@ class Analyzer:
         events = []
 
         for event in self._events:
-            if event["type"] == "removedebuff" and not event["target_is_boss"]:
-                continue
-
             if (
                 (event["type"] == "cast" and event["ability"] not in ("Speed", "Melee"))
                 or (
@@ -1204,11 +1224,11 @@ class Analyzer:
                     and (
                         self._fight.encounter.name != "Thaddius"
                         or not event["in_dead_zone"]
-                    )
+                    ) and event["target_is_boss"]
                 )
                 or (
                     event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
-                    and event["ability"] in ("Fungal Creep", "Web Spray", "Frost Blast")
+                    and event["ability"] in ("Fungal Creep", "Web Spray", "Frost Blast", "Slag Pot")
                 )
             ):
                 events.append(event)

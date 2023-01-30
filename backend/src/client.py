@@ -68,7 +68,7 @@ class WCLClient:
         )
         return (await self._query(metadata_query, "metadata"))["data"]
 
-    async def _fetch_events(self, report_code, fight_id, source_id):
+    async def _fetch_events(self, report_code, fight_id, source: Source):
         deaths = []
         events = []
         combatant_info = []
@@ -122,7 +122,8 @@ class WCLClient:
             events_query = events_query_t % dict(
                 report_code=report_code,
                 next_page_timestamp=next_page_timestamp,
-                source_id=source_id,
+                source_id=source.id,
+                source_name=source.name,
                 fight_id=fight_id,
             )
             r = (await self._query(events_query, "events"))["data"]["reportData"][
@@ -188,7 +189,7 @@ class WCLClient:
                 fight_id = report_metadata["fights"][-1]["id"]
 
         events, combatant_info, deaths, rankings = await self._fetch_events(
-            report_id, fight_id, source_id
+            report_id, fight_id, source
         )
 
         return Report(

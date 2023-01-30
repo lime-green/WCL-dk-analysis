@@ -546,4 +546,9 @@ class Fight:
 
         if "waste" in event and event["resourceChangeType"] == 6:
             normalized_event["runic_power_waste"] = event["waste"] * 10
+
+        if normalized_event["type"] == "resourcechange" and normalized_event["ability"] == "Anti-Magic Shell":
+            runic_power_gain = event["resourceChange"] - event["waste"]
+            normalized_event["runic_power_gained_ams"] = runic_power_gain * 10
+
         return normalized_event
