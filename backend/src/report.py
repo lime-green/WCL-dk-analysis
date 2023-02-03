@@ -278,6 +278,9 @@ class Fight:
         self.events = self._coalesce()
         self._add_proc_consumption()
 
+        if encounter.name == "Razorscale":
+            self.events = self._fix_razorscale()
+
     @property
     def source(self):
         return self._report.source
@@ -293,6 +296,23 @@ class Fight:
                 aura["name"] = self._report.get_ability_name(aura["ability"])
             aura["ability_icon"] = self._report.get_ability_icon(aura["ability"])
         return combatant_info
+
+    def _fix_razorscale(self):
+        for event in self.events:
+            if event.get("target") == "Razorscale":
+                first_razorscale_event = event["timestamp"]
+                break
+        else:
+            raise Exception("Razorscale event not found")
+
+        filtered_events = []
+
+        for event in self.events:
+            if event["timestamp"] >= first_razorscale_event:
+                event["timestamp"] -= first_razorscale_event
+                filtered_events.append(event)
+
+        return filtered_events
 
     def _add_proc_consumption(self):
         auras = self.get_combatant_info(self.source.id).get("auras", [])

@@ -55,6 +55,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             "Maexxna": self._check_maexxna,
             "Kel'Thuzad": self._check_kelthuzad,
             "Ignis the Furnace Master": self._check_ignis,
+            "Razorscale": self._check_razorscale,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
 
@@ -108,6 +109,22 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             return
 
         if self._last_event and self._last_event["target"] != event["target"]:
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
+
+        self._last_event = event
+
+    def _check_razorscale(self, event):
+        if event.get("target") != "Razorscale":
+            return
+
+        if event["type"] != "cast" or event["ability"] not in self.MELEE_ABILITIES:
+            return
+
+        if event["source"] != self._fight.source.name:
+            return
+
+        if self._last_event and event["timestamp"] - self._last_event["timestamp"] > 5000:
             dead_zone = self.DeadZone(self._last_event, event)
             self._dead_zones.append(dead_zone)
 
