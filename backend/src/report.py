@@ -247,7 +247,7 @@ class Report:
             if ability["gameID"] == ability_id:
                 return int(ability["type"])
         else:
-            raise Exception(f"No ability icon found for id: {ability_id}")
+            raise Exception(f"No ability type found for id: {ability_id}")
 
 
 class Fight:
