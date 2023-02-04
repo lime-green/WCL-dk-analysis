@@ -261,7 +261,8 @@ class RuneTracker(BaseAnalyzer):
             for rune in self._sorted_runes(runes):
                 if refreshed == num:
                     break
-                rune.refresh(timestamp)
+                if not rune.can_spend(timestamp):
+                    rune.refresh(timestamp)
                 refreshed += 1
 
             return refreshed == num
