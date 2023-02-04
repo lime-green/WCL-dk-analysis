@@ -486,10 +486,12 @@ class Fight:
                     "targetID": event["targetID"],
                     "target_dies_at": event["target_dies_at"],
                     "rune_cost": event["rune_cost"],
+                    "runes_used": event["runes_used"],
                     "runic_power": event["runic_power"],
                     "runic_power_waste": event.get("runic_power_waste", 0),
                     "modifies_runes": event["modifies_runes"],
                     "num_targets": event.get("num_targets", 0),
+                    "event": event.get("event"),
                     **extra,
                 }
             events.append(event)
@@ -542,6 +544,8 @@ class Fight:
             normalized_event["is_miss"] = normalized_event["hitType"] in MISS_EVENTS
         if event["type"] == "cast":
             normalized_event["rune_cost"] = {**NO_RUNES}
+            normalized_event["runes_used"] = {**NO_RUNES}
+        normalized_event["event"] = event
         if "classResources" in event:
             for resource in event["classResources"]:
                 if resource["type"] == 6:
@@ -549,11 +553,14 @@ class Fight:
                     if resource.get("cost"):
                         normalized_event["runic_power_cost"] = resource["cost"]
                 if resource["type"] == 20:
-                    normalized_event["rune_cost"]["blood"] += 1
+                    normalized_event["rune_cost"]["blood"] += resource["cost"]
+                    normalized_event["runes_used"]["blood"] += min(resource["amount"], resource["cost"])
                 if resource["type"] == 21:
-                    normalized_event["rune_cost"]["frost"] += 1
+                    normalized_event["rune_cost"]["frost"] += resource["cost"]
+                    normalized_event["runes_used"]["frost"] += min(resource["amount"], resource["cost"])
                 if resource["type"] == 22:
-                    normalized_event["rune_cost"]["unholy"] += 1
+                    normalized_event["rune_cost"]["unholy"] += resource["cost"]
+                    normalized_event["runes_used"]["unholy"] += min(resource["amount"], resource["cost"])
             if normalized_event.get("rune_cost") == NO_RUNES:
                 normalized_event["rune_cost"] = None
 

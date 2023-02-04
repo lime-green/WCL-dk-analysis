@@ -1,18 +1,8 @@
-import os
-from datetime import timedelta
 from typing import Optional, TypeVar, Type
 
-
-from rich.console import Console
-from rich.table import Table
-from rich.style import Style
-
+from console_table import console, EventsTable, SHOULD_PRINT
 from report import Fight, Report
 
-# Don't print report to console if in lambda
-SHOULD_PRINT = os.environ.get("AWS_EXECUTION_ENV") is None
-
-console = Console(quiet=not SHOULD_PRINT)
 R = TypeVar("R")
 
 
@@ -168,133 +158,6 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         event["recent_dead_zone"] = dead_zone and (dead_zone.start, dead_zone.end)
 
 
-class EventsTable:
-    def __init__(self):
-        self._events = []
-
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Time", style="dim")
-        table.add_column("Ability")
-        table.add_column("Runic Power")
-        table.add_column("Runes")
-        table.add_column("Buffs")
-        table.add_column("Notes")
-        self._table = table
-
-    def _format_rune_state(self, runes):
-        rune_color = ["red", "red", "turquoise2", "turquoise2", "green", "green"]
-        state = ""
-
-        for i, rune in enumerate(runes):
-            r = rune["name"][0]
-            if rune["name"] == "Death" and rune["is_available"]:
-                r = f"[purple]{r}[/purple]"
-            elif rune["is_available"]:
-                r = f"[{rune_color[i]}]{r}[/{rune_color[i]}]"
-            else:
-                r = f"[dim]{r}[/dim]"
-            r += f" {rune['regen_time']}"
-            state += r
-        return state
-
-    def _format_timestamp(self, timestamp, include_minutes=True):
-        time = timedelta(milliseconds=timestamp)
-        minutes, seconds = divmod(time.seconds, 60)
-        milliseconds = time.microseconds // 1000
-        if include_minutes:
-            return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
-        return f"{seconds:01}.{milliseconds:03}"
-
-    def add_event(self, event):
-        notes = []
-
-        time = self._format_timestamp(event["timestamp"])
-
-        if "gcd_offset" in event:
-            offset = event["gcd_offset"]
-            if offset > 2000:
-                offset_color = "red"
-            elif offset > 1600:
-                offset_color = "yellow1"
-            else:
-                offset_color = "green3"
-            offset_pretty = self._format_timestamp(offset, include_minutes=False)
-
-            if event.get("has_gcd"):
-                time = f"{time} [{offset_color}](+{offset_pretty})[/{offset_color}]"
-
-        ability = event["ability"]
-        if event["ability"] == "Obliterate":
-            ability = f"[bold]{ability}[/bold]"
-        if event["type"] == "removebuff":
-            ability = f"[dim]{ability} ends[/dim]"
-        if event["type"] == "applybuff":
-            ability = f"[dim]{ability} begins[/dim]"
-        if event["type"] == "removedebuff":
-            ability = f"[bold grey0 on red]{ability} drops[bold grey0 on red]"
-        if event["ability"] == "Howling Blast":
-            ability = f"{ability} ({event['num_targets']})"
-        if event.get("bad_howling_blast"):
-            ability = f"[red]{ability}[red]"
-            notes.append("[red]BAD_HOWLING_BLAST[/red]")
-        if event.get("consumes_km") or event.get("consumes_rime"):
-            ability = f"[blue]{ability}[blue]"
-
-        runic_power = event["runic_power"] // 10
-        if event.get("runic_power_waste"):
-            runic_power_waste = event["runic_power_waste"] // 10
-            runic_power = f"[red]{runic_power} (+{runic_power_waste})[/red]"
-        else:
-            runic_power = f"{runic_power}"
-
-        rune_str = ""
-        if event["runes_before"] and (
-            event.get("rune_cost")
-            or event["ability"] in ("Blood Tap", "Empower Rune Weapon")
-        ):
-            rune_str += self._format_rune_state(event["runes_before"])
-            rune_str += " -> "
-        rune_str += self._format_rune_state(event["runes"])
-
-        buff_strs = []
-        for buff in event["buff_short_names"]:
-            if buff == "Rime" and event.get("consumes_rime"):
-                buff_strs.append(f"[blue]{buff}[/blue]")
-            elif buff == "KM" and event.get("consumes_km"):
-                buff_strs.append(f"[blue]{buff}[/blue]")
-            else:
-                buff_strs.append(buff)
-        buff_str = ", ".join(buff_strs)
-
-        if event.get("is_miss"):
-            notes.append(f"[red]{event['hit_type']}[/red]")
-            ability = f"[red]{ability}[/red]"
-
-        if event.get("rune_spend_error"):
-            notes.append("RUNE_ERROR")
-
-        row = [time, ability, runic_power]
-        row.append(rune_str)
-        row += [buff_str, ",".join(notes)]
-
-        style = (
-            Style(bgcolor="grey15")
-            if (
-                "UA" in event["buff_short_names"]
-                or event["ability"] == "Unbreakable Armor"
-            )
-            else None
-        )
-
-        self._table.add_row(
-            *row,
-            style=style,
-        )
-
-    def print(self):
-        console.print(self._table)
-
-
 class Rune:
     RUNE_GRACE = 2471
 
@@ -382,6 +245,35 @@ class RuneTracker(BaseAnalyzer):
         self.rune_grace_wasted = 0
         self.rune_spend_error = False
 
+    @property
+    def current_death_runes(self):
+        return [r for r in self.runes if r.is_death or r.blood_tapped]
+
+    def _sorted_runes(self, runes):
+        runes_ = [(rune, i) for i, rune in enumerate(runes)]
+        runes_sorted = sorted(runes_, key=lambda r: (r[0].regen_time or 0, r[1]))
+        return [rune for rune, _ in runes_sorted]
+
+    def resync_runes(self, timestamp, rune_cost, runes_used):
+        def _resync_runes(runes, num):
+            refreshed = 0
+
+            for rune in self._sorted_runes(runes):
+                if refreshed == num:
+                    break
+                rune.refresh(timestamp)
+                refreshed += 1
+
+            return refreshed == num
+
+        total_cost = rune_cost["blood"] + rune_cost["frost"] + rune_cost["unholy"]
+        total_used = runes_used["blood"] + runes_used["frost"] + runes_used["unholy"]
+
+        _resync_runes(self.runes[0:2], runes_used["blood"])
+        _resync_runes(self.runes[2:4], runes_used["frost"])
+        _resync_runes(self.runes[4:6], runes_used["unholy"])
+        _resync_runes(self.current_death_runes, total_cost - total_used)
+
     def _spend_runes(self, num, runes, timestamp, convert=False):
         if not num:
             return True, 0
@@ -460,6 +352,9 @@ class RuneTracker(BaseAnalyzer):
                 self.runes[i].refresh(timestamp)
 
     def add_event(self, event):
+        if event.get("rune_cost"):
+            self.resync_runes(event["timestamp"], event["rune_cost"], event["runes_used"])
+
         event["runes_before"] = self._serialize(event["timestamp"])
 
         if event["type"] == "cast":
