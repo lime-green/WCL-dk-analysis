@@ -491,7 +491,6 @@ class Fight:
                     "runic_power_waste": event.get("runic_power_waste", 0),
                     "modifies_runes": event["modifies_runes"],
                     "num_targets": event.get("num_targets", 0),
-                    "event": event.get("event"),
                     **extra,
                 }
             events.append(event)
@@ -545,7 +544,6 @@ class Fight:
         if event["type"] == "cast":
             normalized_event["rune_cost"] = {**NO_RUNES}
             normalized_event["runes_used"] = {**NO_RUNES}
-        normalized_event["event"] = event
         if "classResources" in event:
             for resource in event["classResources"]:
                 if resource["type"] == 6:
