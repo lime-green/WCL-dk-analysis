@@ -114,7 +114,10 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event["source"] != self._fight.source.name:
             return
 
-        if self._last_event and event["timestamp"] - self._last_event["timestamp"] > 5000:
+        if (
+            self._last_event
+            and event["timestamp"] - self._last_event["timestamp"] > 5000
+        ):
             dead_zone = self.DeadZone(self._last_event, event)
             self._dead_zones.append(dead_zone)
 
@@ -318,7 +321,9 @@ class RuneTracker(BaseAnalyzer):
 
     def spend(self, ability, timestamp: int, blood: int, frost: int, unholy: int):
         convert_blood = ability in ("Blood Strike", "Pestilence")
-        blood_spend = self._spend_runes(blood, self.runes[0:2], timestamp, convert_blood)
+        blood_spend = self._spend_runes(
+            blood, self.runes[0:2], timestamp, convert_blood
+        )
         frost_spend = self._spend_runes(frost, self.runes[2:4], timestamp)
         unholy_spend = self._spend_runes(unholy, self.runes[4:6], timestamp)
 
@@ -352,9 +357,28 @@ class RuneTracker(BaseAnalyzer):
             if not self.runes[i].can_spend(timestamp):
                 self.runes[i].refresh(timestamp)
 
+    def current_runes(self, timestamp):
+        def _count_rune(i):
+            return 1 if self.runes[i].can_spend(timestamp) else 0
+
+        return {
+            "blood": sum(_count_rune(i) for i in range(0, 2)),
+            "frost": sum(_count_rune(i) for i in range(2, 4)),
+            "unholy": sum(_count_rune(i) for i in range(4, 6)),
+        }
+
     def add_event(self, event):
         if event.get("rune_cost"):
-            self.resync_runes(event["timestamp"], event["rune_cost"], event["runes_used"])
+            # Bit of a hack to deal with the logs saying there's no rune
+            # but there actually is. So we only respawn a new rune if we actually need it
+            # http://localhost:5173/?fight=56&source=19&report=4ZtgQYvTyAmbMLDX
+            runes_needed = {}
+            for rune_type, num in self.current_runes(event["timestamp"]).items():
+                runes_used = event["runes_used"]
+                runes_needed[rune_type] = max(num, runes_used[rune_type])
+
+            # Sync runes to what we think they should be
+            self.resync_runes(event["timestamp"], event["rune_cost"], runes_needed)
 
         event["runes_before"] = self._serialize(event["timestamp"])
 
@@ -506,7 +530,9 @@ class RPAnalyzer(BaseAnalyzer):
         console.print(
             f"* Over-capped RP {self._count_wasted} times with a total of {self._sum_wasted} RP wasted"
         )
-        console.print(f"Gained RP {self._count_gained} times for a total of {self._sum_gained} RP")
+        console.print(
+            f"Gained RP {self._count_gained} times for a total of {self._sum_gained} RP"
+        )
 
     def score(self):
         waste = self._sum_wasted - self._sum_gained
@@ -1137,11 +1163,13 @@ class Analyzer:
                     and (
                         self._fight.encounter.name != "Thaddius"
                         or not event["in_dead_zone"]
-                    ) and event["target_is_boss"]
+                    )
+                    and event["target_is_boss"]
                 )
                 or (
                     event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
-                    and event["ability"] in ("Fungal Creep", "Web Spray", "Frost Blast", "Slag Pot")
+                    and event["ability"]
+                    in ("Fungal Creep", "Web Spray", "Frost Blast", "Slag Pot")
                 )
             ):
                 events.append(event)

@@ -137,4 +137,3 @@ class EventsTable:
 
     def print(self):
         console.print(self._table)
-

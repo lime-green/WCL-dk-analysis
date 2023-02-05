@@ -525,9 +525,7 @@ class Fight:
                 normalized_event["targetID"]
             )
             normalized_event["target_dies_at"] = self._normalize_time(
-                self._report.get_target_death(
-                    normalized_event["targetID"]
-                )
+                self._report.get_target_death(normalized_event["targetID"])
             )
 
         if "abilityGameID" in event:
@@ -552,13 +550,19 @@ class Fight:
                         normalized_event["runic_power_cost"] = resource["cost"]
                 if resource["type"] == 20:
                     normalized_event["rune_cost"]["blood"] += resource["cost"]
-                    normalized_event["runes_used"]["blood"] += min(resource["amount"], resource["cost"])
+                    normalized_event["runes_used"]["blood"] += min(
+                        resource["amount"], resource["cost"]
+                    )
                 if resource["type"] == 21:
                     normalized_event["rune_cost"]["frost"] += resource["cost"]
-                    normalized_event["runes_used"]["frost"] += min(resource["amount"], resource["cost"])
+                    normalized_event["runes_used"]["frost"] += min(
+                        resource["amount"], resource["cost"]
+                    )
                 if resource["type"] == 22:
                     normalized_event["rune_cost"]["unholy"] += resource["cost"]
-                    normalized_event["runes_used"]["unholy"] += min(resource["amount"], resource["cost"])
+                    normalized_event["runes_used"]["unholy"] += min(
+                        resource["amount"], resource["cost"]
+                    )
             if normalized_event.get("rune_cost") == NO_RUNES:
                 normalized_event["rune_cost"] = None
 
@@ -572,7 +576,10 @@ class Fight:
         if "waste" in event and event["resourceChangeType"] == 6:
             normalized_event["runic_power_waste"] = event["waste"] * 10
 
-        if normalized_event["type"] == "resourcechange" and normalized_event["ability"] == "Anti-Magic Shell":
+        if (
+            normalized_event["type"] == "resourcechange"
+            and normalized_event["ability"] == "Anti-Magic Shell"
+        ):
             runic_power_gain = event["resourceChange"] - event["waste"]
             normalized_event["runic_power_gained_ams"] = runic_power_gain * 10
 
