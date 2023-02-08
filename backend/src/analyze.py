@@ -1203,6 +1203,7 @@ class Analyzer:
                 "Indestructible": "Indestructible",
                 "Mark of Norgannon": "Mark",
                 "Berserking": "Berserking",
+                "Blood Fury": "Blood Fury",
                 "Black Magic": "Black Magic",
                 "Swordguard Embroidery": "Swordguard Embroidery",
                 "Unholy Strength": "Unholy Strength",
