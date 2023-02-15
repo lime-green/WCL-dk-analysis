@@ -1088,17 +1088,23 @@ class Analyzer:
         self._fight = fight
         self._events = self._filter_events()
 
-    def _has_rune_error(self):
-        runes = RuneTracker()
+    def _get_valid_initial_rune_state(self):
+        rune_death_states = [(False, False), (True, False), (False, True), (True, True)]
 
-        for event in self._events:
-            runes.add_event(event)
-            if event.get("rune_spend_error"):
-                break
-        else:
-            return False
+        for rune_death_state in rune_death_states:
+            runes = RuneTracker()
 
-        return True
+            for i, is_death in enumerate(rune_death_state):
+                runes.runes[i].is_death = is_death
+
+            for event in self._events:
+                runes.add_event(event)
+                if event.get("rune_spend_error"):
+                    break
+            else:
+                return rune_death_state
+
+        return None
 
     def _analyze_dead_zones(self):
         dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
@@ -1184,8 +1190,16 @@ class Analyzer:
         starting_auras = combatant_info.get("auras", [])
 
         self._analyze_dead_zones()
+
         runes = RuneTracker()
-        has_rune_error = self._has_rune_error()
+        initial_rune_state = self._get_valid_initial_rune_state()
+        if initial_rune_state:
+            for i, is_death in enumerate(initial_rune_state):
+                runes.runes[i].is_death = is_death
+            has_rune_error = False
+        else:
+            has_rune_error = True
+
         table = EventsTable()
         buff_tracker = BuffTracker(
             {
