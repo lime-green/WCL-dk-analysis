@@ -502,6 +502,16 @@ class Fight:
         else:
             return 0
 
+    def _get_rune_resource_types(self, normalized_event):
+        frost_type = 21
+        unholy_type = 22
+
+        if normalized_event["ability"] == "Obliterate":
+            frost_type = 22
+            unholy_type = 21
+
+        return {"frost": frost_type, "unholy": unholy_type}
+
     def _normalize_event(self, event):
         normalized_event = {**event}
         normalized_event["timestamp"] = self._normalize_time(event["timestamp"])
@@ -543,6 +553,8 @@ class Fight:
             normalized_event["rune_cost"] = {**NO_RUNES}
             normalized_event["runes_used"] = {**NO_RUNES}
         if "classResources" in event:
+            rune_resource_types = self._get_rune_resource_types(normalized_event)
+
             for resource in event["classResources"]:
                 if resource["type"] == 6:
                     normalized_event["runic_power"] = resource["amount"]
@@ -553,12 +565,12 @@ class Fight:
                     normalized_event["runes_used"]["blood"] += min(
                         resource["amount"], resource["cost"]
                     )
-                if resource["type"] == 21:
+                if resource["type"] == rune_resource_types["frost"]:
                     normalized_event["rune_cost"]["frost"] += resource["cost"]
                     normalized_event["runes_used"]["frost"] += min(
                         resource["amount"], resource["cost"]
                     )
-                if resource["type"] == 22:
+                if resource["type"] == rune_resource_types["unholy"]:
                     normalized_event["rune_cost"]["unholy"] += resource["cost"]
                     normalized_event["runes_used"]["unholy"] += min(
                         resource["amount"], resource["cost"]
