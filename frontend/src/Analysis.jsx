@@ -314,6 +314,35 @@ const Summary = () => {
     )
   }, [])
 
+  const formatRaiseDead = useCallback(raiseDead => {
+    const numActual = raiseDead.num_usages
+    const numPossible = raiseDead.possible_usages
+    const score = numActual / numPossible
+    const X = <i className="fa fa-times red" aria-hidden="true"></i>
+    const Check = <i className="fa fa-check green" aria-hidden="true"></i>
+    let Icon = X
+
+    let color = "red"
+    if (score === 1) {
+      color = "green"
+      Icon = Check
+    } else if (score >= 0.5) {
+      color = "yellow"
+    } else if (score > 0) {
+      color = "orange"
+    }
+
+    return (
+      <div className={"raise-dead-analysis"}>
+        {Icon}
+        You summoned your Ghoul <span className={color}>
+          {numActual} of {numPossible}
+        </span>{" "}
+        possible times
+      </div>
+    )
+  }, [])
+
   const Tooltip = ({ tooltipText }) => {
     const [hover, setHover] = useState(false)
 
@@ -397,6 +426,7 @@ const Summary = () => {
         <h3>Rotation</h3>
         {formatUA(summary.unbreakable_armor)}
         {formatDiseases(summary.diseases_dropped)}
+        {formatRaiseDead(summary.raise_dead_usage)}
         {formatHowlingBlast(summary.howling_blast_bad_usages)}
         {formatRunicPower(summary.runic_power)}
         {formatRime(summary.rime)}

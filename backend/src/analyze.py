@@ -1027,6 +1027,31 @@ class CoreAbilities(BaseAnalyzer):
                 event["is_core_cast"] = False
 
 
+class RaiseDeadAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_end_time):
+        self._num_raise_deads = 0
+        self._fight_end_time = fight_end_time
+
+    @property
+    def possible_raise_deads(self):
+        return max(1 + (self._fight_end_time - 20000) // 183000, self._num_raise_deads)
+
+    def add_event(self, event):
+        if event["type"] == "cast" and event["ability"] == "Raise Dead":
+            self._num_raise_deads += 1
+
+    def score(self):
+        return self._num_raise_deads / self.possible_raise_deads
+
+    def report(self):
+        return {
+            "raise_dead_usage": {
+                "num_usages": self._num_raise_deads,
+                "possible_usages": self.possible_raise_deads,
+            }
+        }
+
+
 class AnalysisScores(BaseAnalyzer):
     class ScoreWeight:
         def __init__(self, score, weight):
@@ -1045,11 +1070,12 @@ class AnalysisScores(BaseAnalyzer):
         return sum((score.score * score.weight) / total for score in score_weights)
 
     def report(self):
+        # Speed
         gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
         drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
         km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
-        speed_score = self._get_scores(gcd_score, drift_score, km_score)
 
+        # Rotation
         ua_analyzer = self.get_analyzer(UAAnalyzer)
         ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
         disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
@@ -1057,10 +1083,10 @@ class AnalysisScores(BaseAnalyzer):
             self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
         )
         rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        rotation_score = self._get_scores(ua_score, disease_score, hb_score, rime_score)
+        raise_dead_score = self.ScoreWeight(self.get_analyzer(RaiseDeadAnalyzer).score(), 1)
 
+        # Misc
         consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
-        misc_score = self._get_scores(consume_score)
 
         total_score = self._get_scores(
             gcd_score,
@@ -1071,13 +1097,11 @@ class AnalysisScores(BaseAnalyzer):
             hb_score,
             rime_score,
             consume_score,
+            raise_dead_score,
         )
 
         return {
             "analysis_scores": {
-                "speed_score": speed_score,
-                "rotation_score": rotation_score,
-                "misc_score": misc_score,
                 "total_score": total_score,
             }
         }
@@ -1234,12 +1258,13 @@ class Analyzer:
             KMAnalyzer(),
             GCDAnalyzer(),
             RPAnalyzer(),
-            UAAnalyzer(self._fight.end_time),
+            UAAnalyzer(self._fight.duration),
             buff_tracker,
-            DiseaseAnalyzer(self._fight.encounter.name, self._fight.end_time),
+            DiseaseAnalyzer(self._fight.encounter.name, self._fight.duration),
             HowlingBlastAnalyzer(),
             CoreAbilities(),
             RimeAnalyzer(),
+            RaiseDeadAnalyzer(self._fight.duration),
         ]
         analyzers.append(AnalysisScores(analyzers))
 

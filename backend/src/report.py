@@ -269,6 +269,7 @@ class Fight:
         self._global_end_time = end_time
         self.start_time = 0
         self.end_time = end_time - start_time
+        self.duration = self.end_time - self.start_time
         self._combatant_info_lookup = {c["sourceID"]: c for c in combatant_info}
         self.rankings = rankings
 
@@ -311,6 +312,7 @@ class Fight:
             if event["timestamp"] >= first_razorscale_event:
                 event["timestamp"] -= first_razorscale_event
                 filtered_events.append(event)
+        self.duration = filtered_events[-1]["timestamp"]
 
         return filtered_events
 
