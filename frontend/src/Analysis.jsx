@@ -276,18 +276,16 @@ const Summary = () => {
   }, []);
 
   const formatRunicPower = useCallback((runicPower) => {
-    const overcapTimes = runicPower.overcap_times;
-    const overcapSum = runicPower.overcap_sum;
-    const gainedSum = runicPower.gained_sum;
+    const overcapTimes = runicPower.overcap_times
+    const overcapSum = runicPower.overcap_sum
+    const gainedSum = runicPower.gained_sum
 
     return (
       <div className={"runic-power-analysis"}>
-        {gainedSum ?
-          <div>
-            <i className="fa fa-info hl" aria-hidden="true"></i>
-            You gained a total of <span className={"hl"}>{gainedSum}</span> Runic Power using AMS
-          </div>
-        : null}
+        <div>
+          <i className="fa fa-info hl" aria-hidden="true"></i>
+          You gained a total of <span className={"hl"}>{gainedSum}</span> Runic Power using AMS
+        </div>
         <div>
           <i className="fa fa-info hl" aria-hidden="true"></i>
           You over-capped Runic Power <span className={"hl"}>
