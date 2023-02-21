@@ -807,6 +807,7 @@ class GCDAnalyzer(BaseAnalyzer):
         "Path of Illidan",
         "Anti-Magic Shell",
         "Unholy Frenzy",
+        "Wrathstone",
     }
 
     def __init__(self):
@@ -1249,6 +1250,13 @@ class Analyzer:
                 "Edward's Insight": "Edward's Insight",
                 "Loatheb's Shadow": "Loatheb's Shadow",
                 "Cinderglacier": "Cinderglacier",
+                "Mjolnir Runestone": "Mjolnir Runestone",
+                "Implosion": "Implosion",  # Dark Matter
+                "Comet's Trail": "Comet's Trail",
+                "Wrathstone": "Wrathstone",
+                "Blood of the Old God": "Blood of the Old God",
+                "Pyrite Infusion": "Pyrite Infusion",
+                "Fury of the Five Flights": "Fury of the Five Flights,"
             },
             starting_auras,
         )
