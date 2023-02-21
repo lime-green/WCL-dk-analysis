@@ -55,6 +55,7 @@ SPELL_TRANSLATIONS = {
     49938: "Death and Decay",
     56815: "Rune Strike",
     49941: "Blood Boil",
+    63560: "Ghoul Frenzy",
 }
 
 
@@ -208,6 +209,8 @@ class Report:
             return "https://wow.zamimg.com/images/wow/icons/large/spell_shadow_plaguecloud.jpg"
         if ability_id == 60229:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_inscription_tarotgreatness.jpg"
+        if ability_id == 63560:
+            return "https://wow.zamimg.com/images/wow/icons/large/ability_ghoulfrenzy.jpg"
 
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
