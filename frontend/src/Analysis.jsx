@@ -155,7 +155,7 @@ const Summary = () => {
     return (
       <div className={"rune-drift"}>
         <i className="fa fa-clock-o hl" aria-hidden="true"></i>
-        You drifted Obliterate runes by a total of{" "}
+        You drifted runes by a total of{" "}
         <span className={color}>{runeDriftSeconds.toFixed(2)} seconds</span>
       </div>
     );
@@ -420,14 +420,14 @@ const Summary = () => {
         <h3>Speed</h3>
         {formatGCDLatency(summary.gcd_latency)}
         {formatRuneDrift(summary.rune_drift)}
-        {formatKillingMachine(summary.killing_machine)}
+        {summary.killing_machine && formatKillingMachine(summary.killing_machine)}
         <h3>Rotation</h3>
-        {formatUA(summary.unbreakable_armor)}
-        {formatDiseases(summary.diseases_dropped)}
-        {formatRaiseDead(summary.raise_dead_usage)}
-        {formatHowlingBlast(summary.howling_blast_bad_usages)}
-        {formatRunicPower(summary.runic_power)}
-        {formatRime(summary.rime)}
+        {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
+        {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
+        {summary.raise_dead_usage && formatRaiseDead(summary.raise_dead_usage)}
+        {summary.howling_blast_bad_usages && formatHowlingBlast(summary.howling_blast_bad_usages)}
+        {summary.runic_power && formatRunicPower(summary.runic_power)}
+        {summary.rime && formatRime(summary.rime)}
         <h3>Miscellaneous</h3>
         {formatFlask(summary.flask_usage)}
         {formatPotions(summary.potion_usage)}

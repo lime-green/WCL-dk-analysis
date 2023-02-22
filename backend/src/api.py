@@ -12,8 +12,7 @@ from pydantic import BaseModel
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 from client import fetch_report, PrivateReport
-from analyze import analyze
-
+from analysis.analyze import analyze
 
 SENTRY_ENABLED = os.environ.get("AWS_EXECUTION_ENV") is not None
 if SENTRY_ENABLED:

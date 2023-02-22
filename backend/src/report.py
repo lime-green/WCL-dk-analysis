@@ -210,7 +210,9 @@ class Report:
         if ability_id == 60229:
             return "https://wow.zamimg.com/images/wow/icons/large/inv_inscription_tarotgreatness.jpg"
         if ability_id == 63560:
-            return "https://wow.zamimg.com/images/wow/icons/large/ability_ghoulfrenzy.jpg"
+            return (
+                "https://wow.zamimg.com/images/wow/icons/large/ability_ghoulfrenzy.jpg"
+            )
 
         for ability in self._abilities:
             if ability["gameID"] == ability_id:
