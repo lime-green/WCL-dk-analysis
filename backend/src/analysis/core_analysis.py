@@ -714,11 +714,11 @@ class BombAnalyzer(BaseAnalyzer):
 
     @property
     def possible_thermals(self):
-        return max(1 + self._fight_duration // 303000, self._num_thermals)
+        return max(1 + self._fight_duration // 305000, self._num_thermals)
 
     @property
     def possible_saronites(self):
-        return max(1 + self._fight_duration // 63000, self._num_saronites) - self.possible_thermals
+        return max(1 + self._fight_duration // 65000 - self.possible_thermals, self._num_saronites)
 
     def score(self):
         score_thermal = self._num_thermals / self.possible_thermals
