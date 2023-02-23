@@ -1,5 +1,6 @@
 from analysis.base import AnalysisScorer, BaseAnalyzer
 from analysis.core_analysis import (
+    BombAnalyzer,
     CoreAnalysisConfig,
     GCDAnalyzer,
     RuneTracker,
@@ -357,7 +358,8 @@ class FrostAnalysisScorer(AnalysisScorer):
         )
 
         # Misc
-        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
+        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        bomb_score = self.ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
 
         total_score = self._get_scores(
             gcd_score,
@@ -369,6 +371,7 @@ class FrostAnalysisScorer(AnalysisScorer):
             rime_score,
             consume_score,
             raise_dead_score,
+            bomb_score,
         )
 
         return {
@@ -379,8 +382,8 @@ class FrostAnalysisScorer(AnalysisScorer):
 
 
 class FrostAnalysisConfig(CoreAnalysisConfig):
-    def get_analyzers(self, fight: Fight):
-        return super().get_analyzers(fight) + [
+    def get_analyzers(self, fight: Fight, buff_tracker_):
+        return super().get_analyzers(fight, buff_tracker_) + [
             KMAnalyzer(),
             UAAnalyzer(fight.duration),
             HowlingBlastAnalyzer(),

@@ -1,6 +1,7 @@
 import itertools
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
@@ -13,6 +14,7 @@ class Encounter:
 class Source:
     id: int
     name: str
+    pets: List[int] = field(default_factory=lambda: [])
 
 
 HIT_TYPES = {

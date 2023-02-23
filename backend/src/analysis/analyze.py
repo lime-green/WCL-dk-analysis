@@ -7,6 +7,7 @@ from analysis.core_analysis import (
 from analysis.frost_analysis import (
     FrostAnalysisConfig,
 )
+from analysis.unholy_analysis import UnholyAnalysisConfig
 from console_table import EventsTable, SHOULD_PRINT
 from report import Fight, Report
 
@@ -15,6 +16,7 @@ class Analyzer:
     SPEC_ANALYSIS_CONFIGS = {
         "Default": CoreAnalysisConfig,
         "Frost": FrostAnalysisConfig,
+        "Unholy": UnholyAnalysisConfig,
     }
 
     def __init__(self, fight: Fight):
@@ -93,8 +95,9 @@ class Analyzer:
                 continue
 
             if (
-                event["type"] == "removebuff"
+                event["type"] in ("refreshbuff", "applybuff", "removebuff")
                 and event["targetID"] != self._fight.source.id
+                and event["targetID"] not in self._fight.source.pets
             ):
                 continue
 
@@ -193,12 +196,14 @@ class Analyzer:
                 "Wrathstone": "Wrathstone",
                 "Blood of the Old God": "Blood of the Old God",
                 "Pyrite Infusion": "Pyrite Infusion",
-                "Fury of the Five Flights": "Fury of the Five Flights,",
+                "Fury of the Five Flights": "Fury of the Five Flights",
+                "Desolation": "Desolation",
             },
             starting_auras,
         )
 
-        analyzers = [runes, buff_tracker, *analysis_config.get_analyzers(self._fight)]
+        analyzers = [runes, buff_tracker]
+        analyzers.extend(analysis_config.get_analyzers(self._fight, buff_tracker))
         analyzers.append(analysis_config.get_scorer(analyzers))
 
         for event in self._events:

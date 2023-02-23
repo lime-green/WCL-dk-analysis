@@ -438,30 +438,31 @@ class BuffTracker(BaseAnalyzer):
         if name in ("Speed", "Indestructible") and name not in self._active:
             self._pots_used += 1
 
-        if name in self._buffs_to_track:
-            self._active[name] = {
-                "abilityGameID": id,
-                "ability": name,
-                "ability_icon": icon,
-            }
+        self._active[name] = {
+            "abilityGameID": id,
+            "ability": name,
+            "ability_icon": icon,
+        }
 
     def _remove(self, name):
         if name == "Flask of Endless Rage":
             self._has_flask = False
 
-        if name in self._buffs_to_track:
-            if name in self._active:
-                del self._active[name]
+        if name in self._active:
+            del self._active[name]
+
+    def __contains__(self, item):
+        return item in self._active
 
     def get_buff_short_names(self):
-        return [self._buffs_to_track[buff] for buff in self._active]
+        return [self._buffs_to_track[buff] for buff in self._active if buff in self._buffs_to_track]
 
     def add_event(self, event):
         if event["type"] == "applybuff":
             self._add(event["abilityGameID"], event["ability"], event["ability_icon"])
         if event["type"] == "removebuff":
             self._remove(event["ability"])
-        event["buffs"] = list(self._active.values())
+        event["buffs"] = list(buff_data for buff, buff_data in self._active.items() if buff in self._buffs_to_track)
         event["buff_short_names"] = self.get_buff_short_names()
 
     def _add_starting_auras(self, starting_auras):
@@ -695,6 +696,47 @@ class DiseaseAnalyzer(BaseAnalyzer):
         }
 
 
+class BombAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_duration):
+        self._fight_duration = fight_duration
+        self._num_thermals = 0
+        self._num_saronites = 0
+
+    def add_event(self, event):
+        if event["type"] != "cast":
+            return
+
+        if event["ability"] == "Global Thermal Sapper Charge":
+            self._num_thermals += 1
+
+        if event["ability"] == "Saronite Bomb":
+            self._num_saronites += 1
+
+    @property
+    def possible_thermals(self):
+        return max(1 + self._fight_duration // 303000, self._num_thermals)
+
+    @property
+    def possible_saronites(self):
+        return max(1 + self._fight_duration // 63000, self._num_saronites) - self.possible_thermals
+
+    def score(self):
+        score_thermal = self._num_thermals / self.possible_thermals
+        score_saronite = self._num_saronites / self.possible_saronites
+        # Thermal does more than 2x saronite
+        return score_thermal * 0.7 + score_saronite * 0.3
+
+    def report(self):
+        return {
+            "bomb_usage": {
+                "thermal_possible": self.possible_thermals,
+                "thermal_actual": self._num_thermals,
+                "saronite_possible": self.possible_saronites,
+                "saronite_actual": self._num_saronites,
+            }
+        }
+
+
 class CoreAbilities(BaseAnalyzer):
     CORE_ABILITIES = {
         "Icy Touch",
@@ -727,13 +769,15 @@ class CoreAnalysisScorer(AnalysisScorer):
         disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
 
         # Misc
-        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 0.5)
+        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        bomb_score = self.ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
 
         total_score = self._get_scores(
             gcd_score,
             drift_score,
             disease_score,
             consume_score,
+            bomb_score,
         )
 
         return {
@@ -744,12 +788,13 @@ class CoreAnalysisScorer(AnalysisScorer):
 
 
 class CoreAnalysisConfig:
-    def get_analyzers(self, fight: Fight):
+    def get_analyzers(self, fight: Fight, buff_tracker_):
         return [
             GCDAnalyzer(),
             RPAnalyzer(),
             DiseaseAnalyzer(fight.encounter.name, fight.duration),
             CoreAbilities(),
+            BombAnalyzer(fight.duration),
         ]
 
     def get_scorer(self, analyzers):

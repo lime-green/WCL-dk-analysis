@@ -13,6 +13,9 @@ class BaseAnalyzer:
     def report(self):
         return {}
 
+    def score(self):
+        raise NotImplemented
+
 
 class AnalysisScorer(BaseAnalyzer):
     class ScoreWeight:

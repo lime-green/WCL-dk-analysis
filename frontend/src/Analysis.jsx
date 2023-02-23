@@ -341,6 +341,33 @@ const Summary = () => {
     )
   }, [])
 
+  const formatUsage = useCallback((numActual, numPossible, spellName, analysisName) => {
+    const score = numActual / numPossible
+    const X = <i className="fa fa-times red" aria-hidden="true"></i>
+    const Check = <i className="fa fa-check green" aria-hidden="true"></i>
+    let Icon = X
+
+    let color = "red"
+    if (score === 1) {
+      color = "green"
+      Icon = Check
+    } else if (score >= 0.5) {
+      color = "yellow"
+    } else if (score > 0) {
+      color = "orange"
+    }
+
+    return (
+      <div className={analysisName}>
+        {Icon}
+        You used {spellName} <span className={color}>
+          {numActual} of {numPossible}
+        </span>{" "}
+        possible times
+      </div>
+    )
+  }, [])
+
   const Tooltip = ({ tooltipText }) => {
     const [hover, setHover] = useState(false)
 
@@ -431,6 +458,18 @@ const Summary = () => {
         <h3>Miscellaneous</h3>
         {formatFlask(summary.flask_usage)}
         {formatPotions(summary.potion_usage)}
+        {summary.bomb_usage && formatUsage(
+          summary.bomb_usage.thermal_actual,
+          summary.bomb_usage.thermal_possible,
+          "Global Thermal Sapper Charge",
+          "sapper-analysis",
+        )}
+        {summary.bomb_usage && formatUsage(
+          summary.bomb_usage.saronite_actual,
+          summary.bomb_usage.saronite_possible,
+          "Saronite Bomb",
+          "saronite-analysis",
+        )}
       </div>
     </div>
   );
