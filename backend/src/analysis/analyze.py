@@ -22,12 +22,13 @@ class Analyzer:
     def __init__(self, fight: Fight):
         self._fight = fight
         self._events = self._filter_events()
+        self.__spec = None
 
     def _get_valid_initial_rune_state(self):
         rune_death_states = [(False, False), (True, False), (False, True), (True, True)]
 
         for rune_death_state in rune_death_states:
-            runes = RuneTracker()
+            runes = self._create_rune_tracker()
 
             for i, is_death in enumerate(rune_death_state):
                 runes.runes[i].is_death = is_death
@@ -53,43 +54,52 @@ class Analyzer:
         return dead_zone_analyzer
 
     def _detect_spec(self):
-        for event in self._events:
-            if event["type"] == "cast" and event["ability"] in (
-                "Howling Blast",
-                "Frost Strike",
-            ):
-                return "Frost"
-            if event["type"] == "cast" and event["ability"] in (
-                "Summon Gargoyle",
-                "Ghoul Frenzy",
-            ):
-                return "Unholy"
+        if not self.__spec:
 
-        # If the above doesn't work, then try with less determinate spells
-        for event in self._events:
-            if event["type"] == "cast" and event["ability"] == "Obliterate":
-                return "Frost"
-            if event["type"] == "cast" and event["ability"] == "Death and Decay":
-                return "Unholy"
+            def detect():
+                for event in self._events:
+                    if event["type"] == "cast" and event["ability"] in (
+                        "Howling Blast",
+                        "Frost Strike",
+                    ):
+                        return "Frost"
+                    if event["type"] == "cast" and event["ability"] in (
+                        "Summon Gargoyle",
+                        "Ghoul Frenzy",
+                    ):
+                        return "Unholy"
 
-        return None
+                # If the above doesn't work, then try with less determinate spells
+                for event in self._events:
+                    if event["type"] == "cast" and event["ability"] == "Obliterate":
+                        return "Frost"
+                    if (
+                        event["type"] == "cast"
+                        and event["ability"] == "Death and Decay"
+                    ):
+                        return "Unholy"
+
+                return None
+
+            self.__spec = detect()
+        return self.__spec
 
     def _filter_events(self):
         """Remove any events we don't care to analyze or show"""
         events = []
 
         for i, event in enumerate(self._fight.events):
-            # We're neither the source nor the target (eg: ghouls attacking boss)
+            # We're neither the source nor the target
             if (
                 event["sourceID"] != self._fight.source.id
                 and event["targetID"] != self._fight.source.id
+                and event["sourceID"] not in self._fight.source.pets
             ):
                 continue
 
             # Don't really care about these
             if event["type"] in (
                 "applydebuffstack",
-                "damage",
                 "heal",
             ):
                 continue
@@ -101,9 +111,6 @@ class Analyzer:
             ):
                 continue
 
-            if event["type"] == "cast" and event["sourceID"] != self._fight.source.id:
-                continue
-
             events.append(event)
         return events
 
@@ -113,7 +120,7 @@ class Analyzer:
         events = []
 
         for event in self._events:
-            if (
+            if event["sourceID"] == self._fight.source.id and (
                 (event["type"] == "cast" and event["ability"] not in ("Speed", "Melee"))
                 or (
                     event["type"] == "applybuff"
@@ -141,6 +148,16 @@ class Analyzer:
                 events.append(event)
         return events
 
+    def _create_rune_tracker(self):
+        spec = self._detect_spec()
+        track_drift_type = {"Frost", "Unholy"}
+        if spec == "Unholy":
+            track_drift_type = {"Blood", "Frost", "Unholy"}
+        return RuneTracker(
+            should_convert_blood=spec == "Frost",
+            track_drift_type=track_drift_type,
+        )
+
     def analyze(self):
         if not self._events:
             raise Exception("There are no events to analyze")
@@ -148,15 +165,14 @@ class Analyzer:
         source_id = self._fight.source.id
         combatant_info = self._fight.get_combatant_info(source_id)
         starting_auras = combatant_info.get("auras", [])
-        spec = self._detect_spec()
         analysis_config = self.SPEC_ANALYSIS_CONFIGS.get(
-            spec,
+            self._detect_spec(),
             self.SPEC_ANALYSIS_CONFIGS["Default"],
         )()
 
         self._analyze_dead_zones()
 
-        runes = RuneTracker()
+        runes = self._create_rune_tracker()
         initial_rune_state = self._get_valid_initial_rune_state()
         if initial_rune_state:
             for i, is_death in enumerate(initial_rune_state):
@@ -200,15 +216,20 @@ class Analyzer:
                 "Desolation": "Desolation",
             },
             starting_auras,
+            self._detect_spec(),
         )
 
         analyzers = [runes, buff_tracker]
         analyzers.extend(analysis_config.get_analyzers(self._fight, buff_tracker))
         analyzers.append(analysis_config.get_scorer(analyzers))
 
+        source_id = self._fight.source.id
         for event in self._events:
             for analyzer in analyzers:
-                analyzer.add_event(event)
+                if (
+                    event["sourceID"] == source_id or event["targetID"] == source_id
+                ) or analyzer.INCLUDE_PET_EVENTS:
+                    analyzer.add_event(event)
 
         displayable_events = self.displayable_events
 
@@ -235,6 +256,8 @@ class Analyzer:
             },
             "analysis": analysis,
             "events": displayable_events,
+            "spec": self._detect_spec(),
+            "show_procs": self._detect_spec() == "Frost",
         }
 
 

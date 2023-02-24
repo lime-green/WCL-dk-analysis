@@ -5,6 +5,8 @@ import BloodRune from "./assets/blood_rune.webp";
 import FrostRune from "./assets/frost_rune.webp";
 import UnholyRune from "./assets/unholy_rune.webp";
 import DeathRune from "./assets/death_rune.webp";
+import {GargoyleAnalysis} from "./GargoyleAnalysis"
+import { formatUpTime, formatUsage} from "./helpers"
 
 const formatRune = (rune, i) => {
   const src = {
@@ -79,11 +81,14 @@ const formatRanking = (ranking) => {
 const Summary = () => {
   const analysis = useContext(LogAnalysisContext);
 
-  const formatGCDLatency = useCallback((gcdLatency) => {
+  const formatGCDLatency = useCallback((gcdLatency, infoOnly) => {
     const averageLatency = gcdLatency.average_latency;
 
     let color = "green";
-    if (averageLatency > 200) {
+
+    if (infoOnly) {
+      color = "hl"
+    } else if (averageLatency > 200) {
       color = "red";
     } else if (averageLatency > 100) {
       color = "yellow";
@@ -140,11 +145,14 @@ const Summary = () => {
     );
   }, []);
 
-  const formatRuneDrift = useCallback((runeDrift) => {
+  const formatRuneDrift = useCallback((runeDrift, infoOnly) => {
     const runeDriftMs = runeDrift.rune_drift_ms;
 
     let color = "green";
-    if (runeDriftMs > 10000) {
+
+    if (infoOnly) {
+      color = "hl"
+    } else if (runeDriftMs > 10000) {
       color = "red";
     } else if (runeDriftMs > 5000) {
       color = "yellow";
@@ -341,33 +349,6 @@ const Summary = () => {
     )
   }, [])
 
-  const formatUsage = useCallback((numActual, numPossible, spellName, analysisName) => {
-    const score = numActual / numPossible
-    const X = <i className="fa fa-times red" aria-hidden="true"></i>
-    const Check = <i className="fa fa-check green" aria-hidden="true"></i>
-    let Icon = X
-
-    let color = "red"
-    if (score === 1) {
-      color = "green"
-      Icon = Check
-    } else if (score >= 0.5) {
-      color = "yellow"
-    } else if (score > 0) {
-      color = "orange"
-    }
-
-    return (
-      <div className={analysisName}>
-        {Icon}
-        You used {spellName} <span className={color}>
-          {numActual} of {numPossible}
-        </span>{" "}
-        possible times
-      </div>
-    )
-  }, [])
-
   const Tooltip = ({ tooltipText }) => {
     const [hover, setHover] = useState(false)
 
@@ -419,6 +400,7 @@ const Summary = () => {
     dps = "n/a"
   }
   const summary = data.analysis;
+  const isUnholy = data.spec === "Unholy"
 
   return (
     <div className={"analysis-summary"}>
@@ -445,19 +427,27 @@ const Summary = () => {
       </div>
       <div className={"fight-analysis"}>
         <h3>Speed</h3>
-        {formatGCDLatency(summary.gcd_latency)}
-        {formatRuneDrift(summary.rune_drift)}
+        {formatGCDLatency(summary.gcd_latency, isUnholy)}
+        {formatRuneDrift(summary.rune_drift, isUnholy)}
         {summary.killing_machine && formatKillingMachine(summary.killing_machine)}
         <h3>Rotation</h3>
+        {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
+        {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
+        {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
+        {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
+        {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
+        {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
+        {summary.bone_shield_uptime !== undefined && formatUpTime(summary.bone_shield_uptime, "Bone Shield", true)}
         {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
         {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
         {summary.raise_dead_usage && formatRaiseDead(summary.raise_dead_usage)}
         {summary.howling_blast_bad_usages && formatHowlingBlast(summary.howling_blast_bad_usages)}
         {summary.runic_power && formatRunicPower(summary.runic_power)}
         {summary.rime && formatRime(summary.rime)}
+        {summary.gargoyle && <GargoyleAnalysis gargoyle={summary.gargoyle} />}
         <h3>Miscellaneous</h3>
-        {formatFlask(summary.flask_usage)}
-        {formatPotions(summary.potion_usage)}
+        {summary.flask_usage && formatFlask(summary.flask_usage)}
+        {summary.potion_usage && formatPotions(summary.potion_usage)}
         {summary.bomb_usage && formatUsage(
           summary.bomb_usage.thermal_actual,
           summary.bomb_usage.thermal_possible,
@@ -477,8 +467,9 @@ const Summary = () => {
 
 export const Analysis = () => {
   const analysis = useContext(LogAnalysisContext);
+  console.log(analysis)
 
-  const formatEvent = useCallback((event, showRunes, i) => {
+  const formatEvent = useCallback((event, showRunes, showProcs, i) => {
     const abilityIcon = event.ability_icon;
     const icon = (
       <img
@@ -623,9 +614,11 @@ export const Analysis = () => {
         <td>
           <div className={"buffs"}>{event.buffs.map(formatBuff)}</div>
         </td>
-        <td>
-          <div className={"procs-used"}>{procsUsed.map(formatBuff)}</div>
-        </td>
+        {showProcs &&
+          <td>
+            <div className={"procs-used"}>{procsUsed.map(formatBuff)}</div>
+          </td>
+        }
       </tr>
     );
   }, []);
@@ -677,12 +670,12 @@ export const Analysis = () => {
                 </>
               )}
               <th>Buffs</th>
-              <th>Procs Used</th>
+              {summary.show_procs && <th>Procs Used</th>}
             </tr>
           </thead>
           <tbody>
             {events.map((event, i) =>
-              formatEvent(event, !summary.has_rune_spend_error, i)
+              formatEvent(event, !summary.has_rune_spend_error, summary.show_procs, i)
             )}
           </tbody>
         </table>

@@ -200,6 +200,10 @@ tr:hover {
   margin-left: 20px;
 }
 
+.gargoyle-window:nth-child(even) {
+  margin-top: 25px;
+}
+
 .ability,
 .buffs,
 .procs-used {
@@ -266,4 +270,15 @@ td .rune {
 
 .ability-type-32 {
   color: #b8a8f0;
+}
+
+.uptime-score {
+  display: inline-block;
+  text-align: right;
+  flex-grow: 1;
+}
+
+.uptime {
+  width: 300px;
+  display: flex;
 }

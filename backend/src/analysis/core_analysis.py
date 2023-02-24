@@ -1,6 +1,6 @@
 from typing import Optional
 
-from analysis.base import AnalysisScorer, BaseAnalyzer
+from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
 from console_table import console
 from report import Fight
 
@@ -224,7 +224,7 @@ class Rune:
 
 
 class RuneTracker(BaseAnalyzer):
-    def __init__(self):
+    def __init__(self, should_convert_blood, track_drift_type):
         self.runes = [
             Rune("Blood1", "Blood"),
             Rune("Blood2", "Blood"),
@@ -235,6 +235,8 @@ class RuneTracker(BaseAnalyzer):
         ]
         self.rune_grace_wasted = 0
         self.rune_spend_error = False
+        self._should_convert_blood = should_convert_blood
+        self._track_drift_type = track_drift_type
 
     @property
     def current_death_runes(self):
@@ -308,7 +310,10 @@ class RuneTracker(BaseAnalyzer):
         return spent == num, rune_grace_wasted
 
     def spend(self, ability, timestamp: int, blood: int, frost: int, unholy: int):
-        convert_blood = ability in ("Blood Strike", "Pestilence")
+        convert_blood = self._should_convert_blood and ability in (
+            "Blood Strike",
+            "Pestilence",
+        )
         blood_spend = self._spend_runes(
             blood, self.runes[0:2], timestamp, convert_blood
         )
@@ -316,9 +321,15 @@ class RuneTracker(BaseAnalyzer):
         unholy_spend = self._spend_runes(unholy, self.runes[4:6], timestamp)
 
         spent = blood_spend[0] and frost_spend[0] and unholy_spend[0]
-
-        # Note: we don't really care about blood runes drifting
-        rune_grace_wasted = max(frost_spend[1], unholy_spend[1])
+        drifts = [
+            v
+            for k, v in zip(
+                ("Blood", "Frost", "Unholy"),
+                (blood_spend[1], frost_spend[1], unholy_spend[1]),
+            )
+            if k in self._track_drift_type
+        ]
+        rune_grace_wasted = max(drifts, default=0)
         return spent, rune_grace_wasted
 
     def blood_tap(self, timestamp: int):
@@ -422,12 +433,13 @@ class RuneTracker(BaseAnalyzer):
 
 
 class BuffTracker(BaseAnalyzer):
-    def __init__(self, buffs_to_track, starting_auras):
+    def __init__(self, buffs_to_track, starting_auras, spec):
         self._buffs_to_track = buffs_to_track
         self._active = {}  # preserves insertion order
         self._has_flask = False
         self._pots_used = 0
         self._add_starting_auras(starting_auras)
+        self._spec = spec
 
     def _add(self, id, name, icon):
         if name == "Flask of Endless Rage":
@@ -455,14 +467,22 @@ class BuffTracker(BaseAnalyzer):
         return item in self._active
 
     def get_buff_short_names(self):
-        return [self._buffs_to_track[buff] for buff in self._active if buff in self._buffs_to_track]
+        return [
+            self._buffs_to_track[buff]
+            for buff in self._active
+            if buff in self._buffs_to_track
+        ]
 
     def add_event(self, event):
         if event["type"] == "applybuff":
             self._add(event["abilityGameID"], event["ability"], event["ability_icon"])
         if event["type"] == "removebuff":
             self._remove(event["ability"])
-        event["buffs"] = list(buff_data for buff, buff_data in self._active.items() if buff in self._buffs_to_track)
+        event["buffs"] = list(
+            buff_data
+            for buff, buff_data in self._active.items()
+            if buff in self._buffs_to_track
+        )
         event["buff_short_names"] = self.get_buff_short_names()
 
     def _add_starting_auras(self, starting_auras):
@@ -484,20 +504,24 @@ class BuffTracker(BaseAnalyzer):
         console.print(s)
 
     def score(self):
-        total_pots = max(2, self._pots_used)
-        pot_score = self._pots_used / total_pots * 0.5
-        flask_score = 0.5 if self._has_flask else 0
-        return pot_score + flask_score
+        if self._spec == "Frost":
+            total_pots = max(2, self._pots_used)
+            pot_score = self._pots_used / total_pots * 0.5
+            flask_score = 0.5 if self._has_flask else 0
+            return pot_score + flask_score
+        return int(self._has_flask)
 
     def report(self):
-        return {
-            "potion_usage": {
-                "potions_used": self._pots_used,
-            },
+        ret = {
             "flask_usage": {
                 "has_flask": self._has_flask,
             },
         }
+        if self._spec == "Frost":
+            ret["potion_usage"] = {
+                "potions_used": self._pots_used,
+            }
+        return ret
 
 
 class RPAnalyzer(BaseAnalyzer):
@@ -525,11 +549,11 @@ class RPAnalyzer(BaseAnalyzer):
 
     def score(self):
         waste = self._sum_wasted - self._sum_gained
-        if waste < 150:
+        if waste < 50:
             return 1
-        if waste < 200:
+        if waste < 100:
             return 0.5
-        if waste < 250:
+        if waste < 150:
             return 0.25
         return 0
 
@@ -563,6 +587,8 @@ class GCDAnalyzer(BaseAnalyzer):
         "Anti-Magic Shell",
         "Unholy Frenzy",
         "Wrathstone",
+        "Mark of Norgannon",
+        "Mind Freeze",
     }
 
     def __init__(self):
@@ -718,13 +744,16 @@ class BombAnalyzer(BaseAnalyzer):
 
     @property
     def possible_saronites(self):
-        return max(1 + self._fight_duration // 65000 - self.possible_thermals, self._num_saronites)
+        return max(
+            1 + self._fight_duration // 65000 - self.possible_thermals,
+            self._num_saronites,
+        )
 
     def score(self):
         score_thermal = self._num_thermals / self.possible_thermals
         score_saronite = self._num_saronites / self.possible_saronites
         # Thermal does more than 2x saronite
-        return score_thermal * 0.7 + score_saronite * 0.3
+        return score_thermal * 0.6 + score_saronite * 0.4
 
     def report(self):
         return {
@@ -762,17 +791,17 @@ class CoreAbilities(BaseAnalyzer):
 class CoreAnalysisScorer(AnalysisScorer):
     def report(self):
         # Speed
-        gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
-        drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
+        gcd_score = ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
+        drift_score = ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
 
         # Rotation
-        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
+        disease_score = ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
 
         # Misc
-        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
-        bomb_score = self.ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
+        consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
 
-        total_score = self._get_scores(
+        total_score = ScoreWeight.calculate(
             gcd_score,
             drift_score,
             disease_score,
@@ -792,7 +821,6 @@ class CoreAnalysisConfig:
         return [
             GCDAnalyzer(),
             RPAnalyzer(),
-            DiseaseAnalyzer(fight.encounter.name, fight.duration),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
         ]

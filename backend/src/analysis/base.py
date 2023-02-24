@@ -4,6 +4,8 @@ R = TypeVar("R")
 
 
 class BaseAnalyzer:
+    INCLUDE_PET_EVENTS = False
+
     def add_event(self, event):
         pass
 
@@ -14,25 +16,27 @@ class BaseAnalyzer:
         return {}
 
     def score(self):
-        raise NotImplemented
+        raise NotImplementedError
+
+
+class ScoreWeight:
+    def __init__(self, score, weight):
+        assert 0 <= score <= 1
+        self.score = score
+        self.weight = weight
+
+    @staticmethod
+    def calculate(*score_weights):
+        total = sum(score.weight for score in score_weights)
+        return sum((score.score * score.weight) / total for score in score_weights)
 
 
 class AnalysisScorer(BaseAnalyzer):
-    class ScoreWeight:
-        def __init__(self, score, weight):
-            self.score = score
-            self.weight = weight
-
     def __init__(self, analyzers):
         self._analyzers = {analyzer.__class__: analyzer for analyzer in analyzers}
 
     def get_analyzer(self, cls: Type[R]) -> R:
         return self._analyzers[cls]
-
-    @staticmethod
-    def _get_scores(*score_weights):
-        total = sum(score.weight for score in score_weights)
-        return sum((score.score * score.weight) / total for score in score_weights)
 
     def report(self):
         return {

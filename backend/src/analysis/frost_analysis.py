@@ -1,4 +1,4 @@
-from analysis.base import AnalysisScorer, BaseAnalyzer
+from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
 from analysis.core_analysis import (
     BombAnalyzer,
     CoreAnalysisConfig,
@@ -341,27 +341,23 @@ class RaiseDeadAnalyzer(BaseAnalyzer):
 class FrostAnalysisScorer(AnalysisScorer):
     def report(self):
         # Speed
-        gcd_score = self.ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
-        drift_score = self.ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
-        km_score = self.ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
+        gcd_score = ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
+        drift_score = ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
+        km_score = ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
 
         # Rotation
         ua_analyzer = self.get_analyzer(UAAnalyzer)
-        ua_score = self.ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
-        disease_score = self.ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
-        hb_score = self.ScoreWeight(
-            self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5
-        )
-        rime_score = self.ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        raise_dead_score = self.ScoreWeight(
-            self.get_analyzer(RaiseDeadAnalyzer).score(), 1
-        )
+        ua_score = ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
+        disease_score = ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
+        hb_score = ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
+        rime_score = ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
+        raise_dead_score = ScoreWeight(self.get_analyzer(RaiseDeadAnalyzer).score(), 1)
 
         # Misc
-        consume_score = self.ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
-        bomb_score = self.ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
+        consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
+        bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
 
-        total_score = self._get_scores(
+        total_score = ScoreWeight.calculate(
             gcd_score,
             drift_score,
             km_score,
@@ -384,6 +380,7 @@ class FrostAnalysisScorer(AnalysisScorer):
 class FrostAnalysisConfig(CoreAnalysisConfig):
     def get_analyzers(self, fight: Fight, buff_tracker_):
         return super().get_analyzers(fight, buff_tracker_) + [
+            DiseaseAnalyzer(fight.encounter.name, fight.duration),
             KMAnalyzer(),
             UAAnalyzer(fight.duration),
             HowlingBlastAnalyzer(),
