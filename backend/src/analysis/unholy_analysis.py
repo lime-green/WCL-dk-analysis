@@ -312,13 +312,13 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
         if event["type"] == "damage" and event["ability"] == "Death and Decay":
             if (
                 self._last_tick_time is None
-                or event["timestamp"] - self._last_tick_time > 500
+                or event["timestamp"] - self._last_tick_time > 800
             ):
                 self._dnd_ticks += 1
             self._last_tick_time = event["timestamp"]
 
     def uptime(self):
-        return self._dnd_ticks / self._max_ticks
+        return min(1, self._dnd_ticks / self._max_ticks)
 
     def score(self):
         return self.uptime()
