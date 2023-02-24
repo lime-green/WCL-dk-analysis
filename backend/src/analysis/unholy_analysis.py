@@ -199,6 +199,7 @@ class GargoyleWindow:
 
     def add_event(self, event):
         self._up_uptime.add_event(event)
+        self._bl_uptime.add_event(event)
 
         if event["type"] == "cast" and event["source"] == "Ebon Gargoyle":
             if event["ability"] == "Melee":
