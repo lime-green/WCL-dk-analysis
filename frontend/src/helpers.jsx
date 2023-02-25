@@ -8,7 +8,7 @@ export const formatUsage = (numActual, numPossible, spellName, analysisName) => 
   let Icon = X
 
   let color = "red"
-  if (score === 1) {
+  if (score === 1 || numPossible === 0) {
     color = "green"
     Icon = Check
   } else if (score >= 0.5) {

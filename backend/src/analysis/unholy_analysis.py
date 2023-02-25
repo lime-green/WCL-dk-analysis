@@ -183,6 +183,9 @@ class GargoyleWindow:
         self._bl_uptime = BuffUptimeAnalyzer(
             self.end, buff_tracker, {"Bloodlust", "Heroism"}, self.start
         )
+        self._speed_uptime = BuffUptimeAnalyzer(
+            self.end, buff_tracker, "Speed", self.start
+        )
         self.used_hyperspeed = "Hyperspeed Acceleration" in buff_tracker
         self.used_speed_pot = "Speed" in buff_tracker
         self.num_melees = 0
