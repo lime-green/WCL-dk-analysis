@@ -29,11 +29,14 @@ class Window:
 
 
 class BuffUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, end_time, buff_tracker, buff_names, start_time=0):
+    def __init__(
+        self, end_time, buff_tracker, buff_names, start_time=0, max_duration=None
+    ):
         self._start_time = start_time
         self._end_time = end_time
         self._windows = []
         self._window = None
+        self._max_duration = max_duration
 
         if isinstance(buff_names, set):
             self._buff_names = buff_names
@@ -52,6 +55,9 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         self._window = Window(start, end)
         self._windows.append(self._window)
 
+    def set_start_time(self, start):
+        self._start_time = start
+
     def add_event(self, event):
         if event["type"] not in ("applybuff", "removebuff"):
             return
@@ -64,10 +70,9 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
                 self._add_window(event["timestamp"])
         elif event["type"] == "removebuff":
             end = min(event["timestamp"], self._end_time)
-
-            if self._window:
+            if self._window and not self._window.end:
                 self._window.end = end
-            else:  # assume it was a starting aura
+            elif not self._windows:  # assume it was a starting aura
                 self._add_window(self._start_time, end)
 
     def uptime(self):
@@ -77,9 +82,14 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
             self._windows[-1].end = self._end_time
 
         for window in self._windows:
-            uptime_duration += min(window.end, self._end_time) - window.start
+            uptime_duration += min(window.end, self._end_time) - max(
+                window.start, self._start_time
+            )
 
-        return uptime_duration / (self._end_time - self._start_time)
+        total_duration = self._end_time - self._start_time
+        if self._max_duration:
+            total_duration = min(total_duration, self._max_duration)
+        return min(1, uptime_duration / total_duration)
 
     def score(self):
         return self.uptime()
@@ -106,7 +116,7 @@ class DebuffUptimeAnalyzer(BaseAnalyzer):
         if event["type"] in ("applydebuff", "refreshdebuff"):
             if not self._window or self._window.end is not None:
                 self._add_window(event["timestamp"])
-        elif event["type"] == "removedebuff":
+        elif event["type"] == "removedebuff" and self._window:
             end = event["timestamp"]
             self._window.end = end
 
@@ -175,6 +185,7 @@ class GargoyleWindow:
     def __init__(self, start, buff_tracker):
         self.start = start
         self.end = start + 30000
+        self._gargoyle_first_cast = None
         self.snapshotted_greatness = "Greatness" in buff_tracker
         self.snapshotted_fc = "Unholy Strength" in buff_tracker
         self._up_uptime = BuffUptimeAnalyzer(
@@ -184,8 +195,21 @@ class GargoyleWindow:
             self.end, buff_tracker, {"Bloodlust", "Heroism"}, self.start
         )
         self._speed_uptime = BuffUptimeAnalyzer(
-            self.end, buff_tracker, "Speed", self.start
+            self.end, buff_tracker, "Speed", self.start, max_duration=15000 - 25
         )
+        self._hyperspeed_uptime = BuffUptimeAnalyzer(
+            self.end,
+            buff_tracker,
+            "Hyperspeed Acceleration",
+            self.start,
+            max_duration=12000 - 25,
+        )
+        self._uptimes = [
+            self._up_uptime,
+            self._bl_uptime,
+            self._speed_uptime,
+            self._hyperspeed_uptime,
+        ]
         self.used_hyperspeed = "Hyperspeed Acceleration" in buff_tracker
         self.used_speed_pot = "Speed" in buff_tracker
         self.num_melees = 0
@@ -200,15 +224,34 @@ class GargoyleWindow:
     def bl_uptime(self):
         return self._bl_uptime.uptime()
 
-    def add_event(self, event):
-        self._up_uptime.add_event(event)
-        self._bl_uptime.add_event(event)
+    @property
+    def speed_uptime(self):
+        return self._speed_uptime.uptime()
 
-        if event["type"] == "cast" and event["source"] == "Ebon Gargoyle":
-            if event["ability"] == "Melee":
-                self.num_melees += 1
-            if event["ability"] == "Gargoyle Strike":
-                self.num_casts += 1
+    @property
+    def hyperspeed_uptime(self):
+        return self._hyperspeed_uptime.uptime()
+
+    def _set_gargoyle_first_cast(self, event):
+        self._gargoyle_first_cast = event["timestamp"]
+        for uptime in self._uptimes:
+            uptime.set_start_time(event["timestamp"])
+
+    def add_event(self, event):
+        for uptime in self._uptimes:
+            uptime.add_event(event)
+
+        if event["source"] == "Ebon Gargoyle":
+            if (
+                event["type"] in ("cast", "startcast")
+                and self._gargoyle_first_cast is None
+            ):
+                self._set_gargoyle_first_cast(event)
+            if event["type"] == "cast":
+                if event["ability"] == "Melee":
+                    self.num_melees += 1
+                if event["ability"] == "Gargoyle Strike":
+                    self.num_casts += 1
 
         if event["type"] == "damage" and event["source"] == "Ebon Gargoyle":
             self.total_damage += event["amount"]
@@ -230,7 +273,7 @@ class GargoyleWindow:
             ScoreWeight(int(self.snapshotted_greatness), 2),
             ScoreWeight(int(self.snapshotted_fc), 2),
             # Lower weight since this only lasts 12s
-            ScoreWeight(int(self.used_hyperspeed), 2),
+            ScoreWeight(self.hyperspeed_uptime, 2),
             ScoreWeight(self.up_uptime, 4),
             ScoreWeight(self.bl_uptime, 10 if self.bl_uptime else 0),
             ScoreWeight(self.num_casts / max(1, self.num_melees + self.num_casts), 4),
@@ -261,12 +304,14 @@ class GargoyleAnalyzer(BaseAnalyzer):
         return max(1 + (self._fight_duration - 10000) // 183000, len(self._windows))
 
     def score(self):
-        total_score = 0
-
-        for window in self._windows:
-            total_score += window.score()
-
-        return total_score / self.possible_gargoyles
+        window_score = sum(window.score() for window in self._windows)
+        used_speed = any(window.speed_uptime for window in self._windows)
+        return ScoreWeight.calculate(
+            ScoreWeight(int(used_speed), 1),
+            ScoreWeight(
+                window_score / self.possible_gargoyles, 5 * self.possible_gargoyles
+            ),
+        )
 
     def report(self):
         return {
@@ -299,6 +344,8 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "bloodlust_uptime": window.bl_uptime,
                         "num_casts": window.num_casts,
                         "num_melees": window.num_melees,
+                        "speed_uptime": window.speed_uptime,
+                        "hyperspeed_uptime": window.hyperspeed_uptime,
                     }
                     for window in self._windows
                 ],

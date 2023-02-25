@@ -258,6 +258,7 @@ class Analyzer:
             "events": displayable_events,
             "spec": self._detect_spec(),
             "show_procs": self._detect_spec() == "Frost",
+            "show_speed": self._detect_spec() == "Frost",
         }
 
 

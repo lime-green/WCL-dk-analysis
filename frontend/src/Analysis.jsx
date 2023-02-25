@@ -401,6 +401,7 @@ const Summary = () => {
   }
   const summary = data.analysis;
   const isUnholy = data.spec === "Unholy"
+  const showSpeed = data.show_speed
 
   return (
     <div className={"analysis-summary"}>
@@ -426,10 +427,16 @@ const Summary = () => {
         {formatScore(summary.analysis_scores.total_score)}
       </div>
       <div className={"fight-analysis"}>
-        <h3>Speed</h3>
-        {formatGCDLatency(summary.gcd_latency, isUnholy)}
-        {formatRuneDrift(summary.rune_drift, isUnholy)}
-        {summary.killing_machine && formatKillingMachine(summary.killing_machine)}
+        {
+          showSpeed && (
+            <div>
+              <h3>Speed</h3>
+              {formatGCDLatency(summary.gcd_latency, isUnholy)}
+              {formatRuneDrift(summary.rune_drift, isUnholy)}
+              {summary.killing_machine && formatKillingMachine(summary.killing_machine)}
+            </div>
+          )
+        }
         <h3>Rotation</h3>
         {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
         {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}

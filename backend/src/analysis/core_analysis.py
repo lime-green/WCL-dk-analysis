@@ -750,8 +750,14 @@ class BombAnalyzer(BaseAnalyzer):
         )
 
     def score(self):
-        score_thermal = self._num_thermals / self.possible_thermals if self.possible_thermals else 1
-        score_saronite = self._num_saronites / self.possible_saronites if self.possible_saronites else 1
+        score_thermal = (
+            self._num_thermals / self.possible_thermals if self.possible_thermals else 1
+        )
+        score_saronite = (
+            self._num_saronites / self.possible_saronites
+            if self.possible_saronites
+            else 1
+        )
         # Thermal does more than 2x saronite
         return score_thermal * 0.6 + score_saronite * 0.4
 
