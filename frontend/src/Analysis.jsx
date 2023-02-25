@@ -431,20 +431,23 @@ const Summary = () => {
         {summary.rime && formatRime(summary.rime)}
         {summary.gargoyle && <GargoyleAnalysis gargoyle={summary.gargoyle} />}
         <h3>Miscellaneous</h3>
-        {summary.flask_usage && formatFlask(summary.flask_usage)}
+        {summary.hyperspeed && formatUsage(
+          summary.hyperspeed.num_actual,
+          summary.hyperspeed.num_possible,
+          "Hyperspeed Accelerators",
+        )}
         {summary.potion_usage && formatPotions(summary.potion_usage)}
         {summary.bomb_usage && formatUsage(
           summary.bomb_usage.thermal_actual,
           summary.bomb_usage.thermal_possible,
           "Global Thermal Sapper Charge",
-          "sapper-analysis",
         )}
         {summary.bomb_usage && formatUsage(
           summary.bomb_usage.saronite_actual,
           summary.bomb_usage.saronite_possible,
           "Saronite Bomb",
-          "saronite-analysis",
         )}
+        {summary.flask_usage && formatFlask(summary.flask_usage)}
       </div>
     </div>
   );

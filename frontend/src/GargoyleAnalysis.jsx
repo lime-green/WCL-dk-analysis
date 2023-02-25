@@ -7,7 +7,7 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
     <div>
       <h3>Gargoyle</h3>
       <div>
-        {formatUsage(gargoyle.num_actual, gargoyle.num_possible, "Gargoyle", "gargoyle")}
+        {formatUsage(gargoyle.num_actual, gargoyle.num_possible, "Gargoyle")}
         <div className="windows">
           {windows.map((window, i) => {
             const numCast = window.num_casts

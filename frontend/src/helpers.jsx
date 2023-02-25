@@ -3,7 +3,7 @@ export const Info = <i className="fa fa-info hl" aria-hidden="true"></i>
 export const X = <i className="fa fa-times red" aria-hidden="true"></i>
 export const Warning = <i className={"fa fa-warning yellow"} aria-hidden="true" />
 
-export const formatUsage = (numActual, numPossible, spellName, analysisName) => {
+export const formatUsage = (numActual, numPossible, spellName) => {
   const score = numActual / numPossible
   let Icon = X
 
@@ -13,12 +13,13 @@ export const formatUsage = (numActual, numPossible, spellName, analysisName) => 
     Icon = Check
   } else if (score >= 0.5) {
     color = "yellow"
+    Icon = Warning
   } else if (score > 0) {
     color = "orange"
   }
 
   return (
-    <div className={analysisName}>
+    <div className="usage-analysis">
       {Icon}
       You used {spellName} <span className={color}>
           {numActual} of {numPossible}

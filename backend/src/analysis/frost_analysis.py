@@ -1,11 +1,12 @@
 from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
 from analysis.core_analysis import (
     BombAnalyzer,
-    CoreAnalysisConfig,
-    GCDAnalyzer,
-    RuneTracker,
-    DiseaseAnalyzer,
     BuffTracker,
+    CoreAnalysisConfig,
+    DiseaseAnalyzer,
+    GCDAnalyzer,
+    HyperspeedAnalyzer,
+    RuneTracker,
 )
 from console_table import console
 from report import Fight
@@ -351,11 +352,15 @@ class FrostAnalysisScorer(AnalysisScorer):
         disease_score = ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
         hb_score = ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
         rime_score = ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        raise_dead_score = ScoreWeight(self.get_analyzer(RaiseDeadAnalyzer).score(), 1)
+        raise_dead = self.get_analyzer(RaiseDeadAnalyzer)
+        raise_dead_score = ScoreWeight(
+            raise_dead.score(), raise_dead.possible_raise_deads
+        )
 
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
+        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
 
         total_score = ScoreWeight.calculate(
             gcd_score,
@@ -368,6 +373,7 @@ class FrostAnalysisScorer(AnalysisScorer):
             consume_score,
             raise_dead_score,
             bomb_score,
+            hyperspeed_score,
         )
 
         return {

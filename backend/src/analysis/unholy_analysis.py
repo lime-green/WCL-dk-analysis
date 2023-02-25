@@ -5,6 +5,7 @@ from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
     CoreAnalysisConfig,
+    HyperspeedAnalyzer,
     RPAnalyzer,
 )
 from report import Fight
@@ -59,20 +60,25 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         self._start_time = start
 
     def add_event(self, event):
-        if event["type"] not in ("applybuff", "removebuff", "removebuffstack", "refreshbuff"):
+        if event["type"] not in (
+            "applybuff",
+            "removebuff",
+            "removebuffstack",
+            "refreshbuff",
+        ):
             return
 
         if event["ability"] not in self._buff_names:
             return
 
-        if event["type"] in ("removebuffstack", "refreshbuff") and event["timestamp"] <= self._end_time:
+        if (
+            event["type"] in ("removebuffstack", "refreshbuff")
+            and event["timestamp"] <= self._end_time
+        ):
             # If we don't have a window, assume it was a starting aura
             if not self._windows:
                 self._add_window(self._start_time)
-        elif (
-            event["type"] == "applybuff"
-            and event["timestamp"] <= self._end_time
-        ):
+        elif event["type"] == "applybuff" and event["timestamp"] <= self._end_time:
             if not self._window or self._window.end is not None:
                 self._add_window(event["timestamp"])
         elif event["type"] == "removebuff":
@@ -450,6 +456,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 1)
+        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
 
         total_score = ScoreWeight.calculate(
             consume_score,
@@ -463,6 +470,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
             bone_shield_score,
             melee_score,
             rp_score,
+            hyperspeed_score,
         )
 
         return {

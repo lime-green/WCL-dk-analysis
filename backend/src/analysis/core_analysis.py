@@ -772,6 +772,31 @@ class BombAnalyzer(BaseAnalyzer):
         }
 
 
+class HyperspeedAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_duration):
+        self._fight_duration = fight_duration
+        self._num_hyperspeeds = 0
+
+    def add_event(self, event):
+        if event["type"] == "cast" and event["ability"] == "Hyperspeed Acceleration":
+            self._num_hyperspeeds += 1
+
+    @property
+    def possible_hyperspeeds(self):
+        return max(1 + (self._fight_duration - 5000) // 63000, self._num_hyperspeeds)
+
+    def score(self):
+        return self._num_hyperspeeds / self.possible_hyperspeeds
+
+    def report(self):
+        return {
+            "hyperspeed": {
+                "num_possible": self.possible_hyperspeeds,
+                "num_actual": self._num_hyperspeeds,
+            }
+        }
+
+
 class CoreAbilities(BaseAnalyzer):
     CORE_ABILITIES = {
         "Icy Touch",
@@ -806,6 +831,7 @@ class CoreAnalysisScorer(AnalysisScorer):
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
+        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
 
         total_score = ScoreWeight.calculate(
             gcd_score,
@@ -813,6 +839,7 @@ class CoreAnalysisScorer(AnalysisScorer):
             disease_score,
             consume_score,
             bomb_score,
+            hyperspeed_score,
         )
 
         return {
@@ -829,6 +856,7 @@ class CoreAnalysisConfig:
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
+            HyperspeedAnalyzer(fight.duration),
         ]
 
     def get_scorer(self, analyzers):
