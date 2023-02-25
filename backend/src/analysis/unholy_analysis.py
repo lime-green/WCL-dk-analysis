@@ -59,13 +59,20 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         self._start_time = start
 
     def add_event(self, event):
-        if event["type"] not in ("applybuff", "removebuff"):
+        if event["type"] not in ("applybuff", "removebuff", "removebuffstack", "refreshbuff"):
             return
 
         if event["ability"] not in self._buff_names:
             return
 
-        if event["type"] == "applybuff" and event["timestamp"] <= self._end_time:
+        if event["type"] in ("removebuffstack", "refreshbuff") and event["timestamp"] <= self._end_time:
+            # If we don't have a window, assume it was a starting aura
+            if not self._windows:
+                self._add_window(self._start_time)
+        elif (
+            event["type"] == "applybuff"
+            and event["timestamp"] <= self._end_time
+        ):
             if not self._window or self._window.end is not None:
                 self._add_window(event["timestamp"])
         elif event["type"] == "removebuff":
