@@ -1,12 +1,12 @@
 import React, {useCallback, useContext, useState} from "react";
-import { LogAnalysisContext } from "./LogAnalysisContext.jsx";
+import {LogAnalysisContext} from "./LogAnalysisContext.jsx";
 
 import BloodRune from "./assets/blood_rune.webp";
 import FrostRune from "./assets/frost_rune.webp";
 import UnholyRune from "./assets/unholy_rune.webp";
 import DeathRune from "./assets/death_rune.webp";
 import {GargoyleAnalysis} from "./GargoyleAnalysis"
-import { formatUpTime, formatUsage} from "./helpers"
+import {formatTimestamp, formatUpTime, formatUsage} from "./helpers"
 
 const formatRune = (rune, i) => {
   const src = {
@@ -36,28 +36,6 @@ const getAbilityTypeClass = (abilityType) => {
     return `ability-name ability-type-${abilityType}`;
   }
   return "ability-name ability-type-unknown";
-};
-
-const formatTimestamp = (milliSeconds, zeroPad = true) => {
-  let seconds = Math.floor(milliSeconds / 1000);
-  let minutes = Math.floor(seconds / 60);
-  let extraSeconds = seconds % 60;
-
-  if (zeroPad) {
-    minutes = String(minutes).padStart(2, "0");
-  }
-
-  if (zeroPad) {
-    extraSeconds = String(extraSeconds).padStart(2, "0");
-  }
-
-  let extraMilliseconds = String(milliSeconds % 1000).padStart(3, "0");
-
-  if (zeroPad) {
-    return `${minutes}:${extraSeconds}.${extraMilliseconds}`;
-  }
-
-  return `${extraSeconds}.${extraMilliseconds}`;
 };
 
 const formatRanking = (ranking) => {

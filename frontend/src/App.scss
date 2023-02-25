@@ -187,6 +187,10 @@ tr:hover {
 .events-table {
   margin-top: 10px;
   margin-bottom: 10px;
+
+  table {
+    min-width: 1000px;
+  }
 }
 
 .analysis-summary {
@@ -200,8 +204,17 @@ tr:hover {
   margin-left: 20px;
 }
 
+.gargoyle-window {
+  margin-top: 12px;
+}
+
 .gargoyle-window:nth-child(even) {
-  margin-top: 25px;
+  margin-top: 20px;
+}
+
+.gargoyle-subheader {
+  font-size: 1.1em;
+  margin-bottom: 5px;
 }
 
 .ability,

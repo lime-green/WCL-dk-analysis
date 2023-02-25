@@ -346,6 +346,8 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "num_melees": window.num_melees,
                         "speed_uptime": window.speed_uptime,
                         "hyperspeed_uptime": window.hyperspeed_uptime,
+                        "start": window.start,
+                        "end": window.end,
                     }
                     for window in self._windows
                 ],

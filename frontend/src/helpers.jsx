@@ -73,3 +73,25 @@ export const booleanCheck = (bool, positive, negative) => {
 export const hl = (text) => {
   return <span className="hl">{text}</span>
 }
+
+export const formatTimestamp = (milliSeconds, zeroPad = true) => {
+  let seconds = Math.floor(milliSeconds / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let extraSeconds = seconds % 60;
+
+  if (zeroPad) {
+    minutes = String(minutes).padStart(2, "0");
+  }
+
+  if (zeroPad) {
+    extraSeconds = String(extraSeconds).padStart(2, "0");
+  }
+
+  let extraMilliseconds = String(milliSeconds % 1000).padStart(3, "0");
+
+  if (zeroPad) {
+    return `${minutes}:${extraSeconds}.${extraMilliseconds}`;
+  }
+
+  return `${extraSeconds}.${extraMilliseconds}`;
+};

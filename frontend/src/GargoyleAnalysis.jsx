@@ -1,4 +1,4 @@
-import {booleanCheck, formatUpTime, formatUsage, hl, Info} from "./helpers"
+import {booleanCheck, formatTimestamp, formatUpTime, formatUsage, hl, Info} from "./helpers"
 
 
 export const GargoyleAnalysis = ({ gargoyle }) => {
@@ -15,6 +15,13 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
 
             return (
               <div className="gargoyle-window" key={i}>
+                <div className="gargoyle-subheader">
+                  <b>Gargoyle {i+1}:</b> ({hl(formatTimestamp(window.start))} - {hl(formatTimestamp(window.end))})
+                </div>
+                <div>
+                  {Info}
+                  <span>Damage: {hl(window.damage.toLocaleString())} ({hl(numCast)} casts, {hl(numMelee)} melees)</span>
+                </div>
                 <div>
                   {formatUpTime(window.unholy_presence_uptime, "Unholy Presence")}
                 </div>
@@ -29,10 +36,6 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
                 </div>
                 {booleanCheck(window.snapshotted_fc, "You snapshotted Fallen Crusader", "You did not snapshot Fallen Crusader")}
                 {booleanCheck(window.snapshotted_greatness, "You snapshotted Greatness", "You did not snapshot Greatness")}
-                <div>
-                  {Info}
-                  <span>Damage: {hl(window.damage.toLocaleString())} ({hl(numCast)} casts, {hl(numMelee)} melees)</span>
-                </div>
               </div>
             )
           })}
