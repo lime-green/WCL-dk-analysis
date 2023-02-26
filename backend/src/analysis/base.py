@@ -3,6 +3,10 @@ from typing import Type, TypeVar
 R = TypeVar("R")
 
 
+def range_overlap(a, b):
+    return a[0] <= b[1] and b[0] <= a[1]
+
+
 class BaseAnalyzer:
     INCLUDE_PET_EVENTS = False
 

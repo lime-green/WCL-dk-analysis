@@ -1,6 +1,6 @@
 from typing import List
 
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
+from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, range_overlap
 from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
@@ -24,6 +24,15 @@ class Window:
         if self.end is None:
             return None
         return self.end - self.start
+
+    def intersects(self, other):
+        return range_overlap((self.start, self.end), (other.start, other.end))
+
+    def intersection(self, other):
+        if not self.intersects(other):
+            return None
+
+        return Window(max(self.start, other.start), min(self.end, other.end))
 
     def __repr__(self):
         return f"<Window start={self.start} end={self.end}>"
@@ -96,7 +105,7 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
 
         for window in self._windows:
             # If the window is entirely outside the range, ignore it
-            if window.start <= self._end_time and window.end >= self._start_time:
+            if range_overlap((window.start, window.end), (self._start_time, self._end_time)):
                 uptime_duration += min(window.end, self._end_time) - max(
                     window.start, self._start_time
                 )
@@ -196,7 +205,7 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
         return {"ghoul_frenzy_uptime": self.uptime()}
 
 
-class GargoyleWindow:
+class GargoyleWindow(Window):
     def __init__(self, start, buff_tracker):
         self.start = start
         self.end = start + 30000
@@ -299,7 +308,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
     def __init__(self, fight_duration, buff_tracker):
-        self._windows: List[GargoyleWindow] = []
+        self.windows: List[GargoyleWindow] = []
         self._window = None
         self._buff_tracker = buff_tracker
         self._fight_duration = fight_duration
@@ -307,7 +316,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
             self._window = GargoyleWindow(event["timestamp"], self._buff_tracker)
-            self._windows.append(self._window)
+            self.windows.append(self._window)
 
         if not self._window:
             return
@@ -316,11 +325,11 @@ class GargoyleAnalyzer(BaseAnalyzer):
 
     @property
     def possible_gargoyles(self):
-        return max(1 + (self._fight_duration - 10000) // 183000, len(self._windows))
+        return max(1 + (self._fight_duration - 10000) // 183000, len(self.windows))
 
     def score(self):
-        window_score = sum(window.score() for window in self._windows)
-        used_speed = any(window.speed_uptime for window in self._windows)
+        window_score = sum(window.score() for window in self.windows)
+        used_speed = any(window.speed_uptime for window in self.windows)
         return ScoreWeight.calculate(
             ScoreWeight(int(used_speed), 1),
             ScoreWeight(
@@ -333,18 +342,18 @@ class GargoyleAnalyzer(BaseAnalyzer):
             "gargoyle": {
                 "score": self.score(),
                 "num_possible": self.possible_gargoyles,
-                "num_actual": len(self._windows),
+                "num_actual": len(self.windows),
                 "used_speed_potion": any(
-                    window.used_speed_pot for window in self._windows
+                    window.used_speed_pot for window in self.windows
                 ),
                 "bloodlust_uptime": next(
-                    (window.bl_uptime for window in self._windows if window.bl_uptime),
+                    (window.bl_uptime for window in self.windows if window.bl_uptime),
                     0,
                 ),
                 "average_damage": (
-                    sum(window.total_damage for window in self._windows)
-                    / len(self._windows)
-                    if self._windows
+                    sum(window.total_damage for window in self.windows)
+                    / len(self.windows)
+                    if self.windows
                     else 0
                 ),
                 "windows": [
@@ -364,7 +373,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "start": window.start,
                         "end": window.end,
                     }
-                    for window in self._windows
+                    for window in self.windows
                 ],
             }
         }
@@ -538,8 +547,62 @@ class GhoulAnalyzer(BaseAnalyzer):
         }
 
 
-class UnholyAnalysisScorer(AnalysisScorer):
+class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_duration, ignore_windows):
+        self._windows = []
+        self._window = None
+        self._fight_duration = fight_duration
+        self._ignore_windows = ignore_windows
+
+    def _add_window(self, start):
+        self._window = Window(start)
+        self._windows.append(self._window)
+
+    def add_event(self, event):
+        if not self._windows:
+            if event["type"] in ("heal", "cast", "applybuff") and event["ability"] == "Blood Presence":
+                self._add_window(0)
+            elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
+                self._add_window(0)
+                self._window.end = event["timestamp"]
+        elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
+            self._window.end = event["timestamp"]
+        elif event["type"] == "applybuff" and event["ability"] == "Blood Presence":
+            self._add_window(event["timestamp"])
+
+    def uptime(self):
+        if self._windows and self._windows[-1].end is None:
+            self._windows[-1].end = self._fight_duration
+
+        total_uptime = sum(window.duration for window in self._windows)
+        ignore_index = 0
+
+        for window in self._windows:
+            while ignore_index < len(self._ignore_windows) and not window.intersects(self._ignore_windows[ignore_index]):
+                ignore_index += 1
+
+            while ignore_index < len(self._ignore_windows) and window.intersects(self._ignore_windows[ignore_index]):
+                intersection = window.intersection(self._ignore_windows[ignore_index])
+                total_uptime -= intersection.duration
+                ignore_index += 1
+
+            # in case we have an ignore window that overlaps with multiple windows
+            # ignore_index -= 1
+
+        total_duration_without_ignores = self._fight_duration - sum(window.duration for window in self._ignore_windows)
+        return total_uptime / total_duration_without_ignores
+
+    def score(self):
+        return self.uptime()
+
     def report(self):
+        return {
+            "blood_presence_uptime": self.uptime(),
+        }
+
+
+class UnholyAnalysisScorer(AnalysisScorer):
+    def score(self):
         # Rotation
         gargoyle_analyzer = self.get_analyzer(GargoyleAnalyzer)
         bp_score = ScoreWeight(self.get_analyzer(BloodPlagueAnalyzer).score(), 3)
@@ -554,6 +617,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
         )
         melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 3)
         rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
+        blood_presence_score = ScoreWeight(self.get_analyzer(BloodPresenceUptimeAnalyzer).score(), 3)
 
         # Gargoyle
         gargoyle_score = ScoreWeight(
@@ -568,7 +632,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 1)
         hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
 
-        total_score = ScoreWeight.calculate(
+        return ScoreWeight.calculate(
             consume_score,
             bomb_score,
             gargoyle_score,
@@ -582,27 +646,32 @@ class UnholyAnalysisScorer(AnalysisScorer):
             rp_score,
             hyperspeed_score,
             ghoul_score,
+            blood_presence_score,
         )
 
+    def report(self):
         return {
             "analysis_scores": {
-                "total_score": total_score,
+                "total_score": self.score(),
             }
         }
 
 
 class UnholyAnalysisConfig(CoreAnalysisConfig):
     def get_analyzers(self, fight: Fight, buff_tracker):
+        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker)
+
         return super().get_analyzers(fight, buff_tracker) + [
             BoneShieldAnalyzer(fight.duration, buff_tracker),
             DesolationAnalyzer(fight.duration, buff_tracker),
             GhoulFrenzyAnalyzer(fight.duration, buff_tracker),
-            GargoyleAnalyzer(fight.duration, buff_tracker),
+            gargoyle,
             BloodPlagueAnalyzer(fight.duration),
             FrostFeverAnalyzer(fight.duration),
             DeathAndDecayUptimeAnalyzer(fight.duration),
             MeleeUptimeAnalyzer(fight.duration),
             GhoulAnalyzer(fight.duration),
+            BloodPresenceUptimeAnalyzer(fight.duration, gargoyle.windows),
         ]
 
     def get_scorer(self, analyzers):

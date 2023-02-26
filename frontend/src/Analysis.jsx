@@ -424,6 +424,7 @@ const Summary = () => {
           {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
           {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
           {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
+          {summary.blood_presence_uptime !== undefined && formatUpTime(summary.blood_presence_uptime, "Blood Presence (outside of Gargoyle)")}
           {summary.bone_shield_uptime !== undefined && formatUpTime(summary.bone_shield_uptime, "Bone Shield", true)}
           {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
           {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
