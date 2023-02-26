@@ -5,7 +5,8 @@ import BloodRune from "./assets/blood_rune.webp";
 import FrostRune from "./assets/frost_rune.webp";
 import UnholyRune from "./assets/unholy_rune.webp";
 import DeathRune from "./assets/death_rune.webp";
-import {GargoyleAnalysis} from "./GargoyleAnalysis"
+import { GargoyleAnalysis } from "./GargoyleAnalysis"
+import { GhoulAnalysis } from "./GhoulAnalysis.jsx"
 import {formatTimestamp, formatUpTime, formatUsage} from "./helpers"
 
 const formatRune = (rune, i) => {
@@ -404,10 +405,10 @@ const Summary = () => {
       <div className={"total-score-div"}>
         {formatScore(summary.analysis_scores.total_score)}
       </div>
-      <div className={"fight-analysis"}>
+      <div className="fight-analysis">
         {
           showSpeed && (
-            <div>
+            <div className="analysis-section fight-analysis">
               <h3>Speed</h3>
               {formatGCDLatency(summary.gcd_latency, isUnholy)}
               {formatRuneDrift(summary.rune_drift, isUnholy)}
@@ -415,39 +416,53 @@ const Summary = () => {
             </div>
           )
         }
-        <h3>Rotation</h3>
-        {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
-        {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
-        {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
-        {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
-        {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
-        {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
-        {summary.bone_shield_uptime !== undefined && formatUpTime(summary.bone_shield_uptime, "Bone Shield", true)}
-        {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
-        {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
-        {summary.raise_dead_usage && formatRaiseDead(summary.raise_dead_usage)}
-        {summary.howling_blast_bad_usages && formatHowlingBlast(summary.howling_blast_bad_usages)}
-        {summary.runic_power && formatRunicPower(summary.runic_power)}
-        {summary.rime && formatRime(summary.rime)}
-        {summary.gargoyle && <GargoyleAnalysis gargoyle={summary.gargoyle} />}
-        <h3>Miscellaneous</h3>
-        {summary.hyperspeed && formatUsage(
-          summary.hyperspeed.num_actual,
-          summary.hyperspeed.num_possible,
-          "Hyperspeed Accelerators",
+        <div className="analysis-section">
+          <h3>Rotation</h3>
+          {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
+          {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
+          {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
+          {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
+          {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
+          {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
+          {summary.bone_shield_uptime !== undefined && formatUpTime(summary.bone_shield_uptime, "Bone Shield", true)}
+          {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
+          {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
+          {summary.raise_dead_usage && formatRaiseDead(summary.raise_dead_usage)}
+          {summary.howling_blast_bad_usages && formatHowlingBlast(summary.howling_blast_bad_usages)}
+          {summary.runic_power && formatRunicPower(summary.runic_power)}
+          {summary.rime && formatRime(summary.rime)}
+        </div>
+        {summary.gargoyle && (
+          <div className="analysis-section">
+            <GargoyleAnalysis gargoyle={summary.gargoyle} />
+          </div>
         )}
-        {summary.potion_usage && formatPotions(summary.potion_usage)}
-        {summary.bomb_usage && formatUsage(
-          summary.bomb_usage.thermal_actual,
-          summary.bomb_usage.thermal_possible,
-          "Global Thermal Sapper Charge",
+        {summary.ghoul && (
+          <div className="analysis-section">
+            <GhoulAnalysis ghoul={summary.ghoul} />
+          </div>
+
         )}
-        {summary.bomb_usage && formatUsage(
-          summary.bomb_usage.saronite_actual,
-          summary.bomb_usage.saronite_possible,
-          "Saronite Bomb",
-        )}
-        {summary.flask_usage && formatFlask(summary.flask_usage)}
+        <div className="analysis-section">
+          <h3>Miscellaneous</h3>
+          {summary.hyperspeed && formatUsage(
+            summary.hyperspeed.num_actual,
+            summary.hyperspeed.num_possible,
+            "Hyperspeed Accelerators",
+          )}
+          {summary.potion_usage && formatPotions(summary.potion_usage)}
+          {summary.bomb_usage && formatUsage(
+            summary.bomb_usage.thermal_actual,
+            summary.bomb_usage.thermal_possible,
+            "Global Thermal Sapper Charge",
+          )}
+          {summary.bomb_usage && formatUsage(
+            summary.bomb_usage.saronite_actual,
+            summary.bomb_usage.saronite_possible,
+            "Saronite Bomb",
+          )}
+          {summary.flask_usage && formatFlask(summary.flask_usage)}
+        </div>
       </div>
     </div>
   );
@@ -455,7 +470,6 @@ const Summary = () => {
 
 export const Analysis = () => {
   const analysis = useContext(LogAnalysisContext);
-  console.log(analysis)
 
   const formatEvent = useCallback((event, showRunes, showProcs, i) => {
     const abilityIcon = event.ability_icon;
@@ -658,12 +672,12 @@ export const Analysis = () => {
                 </>
               )}
               <th>Buffs</th>
-              {summary.show_procs && <th>Procs Used</th>}
+              {data.show_procs && <th>Procs Used</th>}
             </tr>
           </thead>
           <tbody>
             {events.map((event, i) =>
-              formatEvent(event, !summary.has_rune_spend_error, summary.show_procs, i)
+              formatEvent(event, !summary.has_rune_spend_error, data.show_procs, i)
             )}
           </tbody>
         </table>

@@ -850,6 +850,9 @@ class CoreAnalysisScorer(AnalysisScorer):
 
 
 class CoreAnalysisConfig:
+    show_procs = False
+    show_speed = False
+
     def get_analyzers(self, fight: Fight, buff_tracker_):
         return [
             GCDAnalyzer(),
@@ -861,3 +864,6 @@ class CoreAnalysisConfig:
 
     def get_scorer(self, analyzers):
         return CoreAnalysisScorer(analyzers)
+
+    def create_rune_tracker(self):
+        return RuneTracker(False, {"Blood", "Frost", "Unholy"})

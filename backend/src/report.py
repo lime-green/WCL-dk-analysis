@@ -1,7 +1,7 @@
 import itertools
 import logging
 from dataclasses import dataclass, field
-from typing import List
+from typing import Set
 
 
 @dataclass
@@ -14,7 +14,7 @@ class Encounter:
 class Source:
     id: int
     name: str
-    pets: List[int] = field(default_factory=lambda: [])
+    pets: Set[int] = field(default_factory=lambda: set())
 
 
 HIT_TYPES = {
@@ -154,6 +154,9 @@ class Report:
 
     def get_actor_name(self, actor_id: int):
         return self._actors[actor_id]["name"]
+
+    def is_owner_pet(self, actor_id: int):
+        return actor_id in self.source.pets
 
     def get_is_boss_actor(self, actor_id: int):
         return self._actors[actor_id]["subType"] == "Boss"
@@ -500,6 +503,8 @@ class Fight:
                     "runic_power_waste": event.get("runic_power_waste", 0),
                     "modifies_runes": event["modifies_runes"],
                     "num_targets": event.get("num_targets", 0),
+                    "is_owner_pet_source": event["is_owner_pet_source"],
+                    "is_owner_pet_target": event["is_owner_pet_target"],
                     **extra,
                 }
             events.append(event)
@@ -603,5 +608,14 @@ class Fight:
         ):
             runic_power_gain = event["resourceChange"] - event["waste"]
             normalized_event["runic_power_gained_ams"] = runic_power_gain * 10
+
+        normalized_event["is_owner_pet_source"] = self._report.is_owner_pet(
+            normalized_event["sourceID"]
+        )
+        normalized_event["is_owner_pet_target"] = False
+        if normalized_event.get("targetID"):
+            normalized_event["is_owner_pet_target"] = self._report.is_owner_pet(
+                normalized_event["targetID"]
+            )
 
         return normalized_event

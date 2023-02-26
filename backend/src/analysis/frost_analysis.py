@@ -361,6 +361,9 @@ class FrostAnalysisScorer(AnalysisScorer):
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
         hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
+        from .unholy_analysis import GhoulAnalyzer
+
+        print(self.get_analyzer(GhoulAnalyzer).report())
 
         total_score = ScoreWeight.calculate(
             gcd_score,
@@ -384,7 +387,12 @@ class FrostAnalysisScorer(AnalysisScorer):
 
 
 class FrostAnalysisConfig(CoreAnalysisConfig):
+    show_procs = True
+    show_speed = True
+
     def get_analyzers(self, fight: Fight, buff_tracker_):
+        from .unholy_analysis import GhoulAnalyzer
+
         return super().get_analyzers(fight, buff_tracker_) + [
             DiseaseAnalyzer(fight.encounter.name, fight.duration),
             KMAnalyzer(),
@@ -392,7 +400,14 @@ class FrostAnalysisConfig(CoreAnalysisConfig):
             HowlingBlastAnalyzer(),
             RimeAnalyzer(),
             RaiseDeadAnalyzer(fight.duration),
+            GhoulAnalyzer(fight.duration),
         ]
 
     def get_scorer(self, analyzers):
         return FrostAnalysisScorer(analyzers)
+
+    def create_rune_tracker(self):
+        return RuneTracker(
+            should_convert_blood=True,
+            track_drift_type={"Frost", "Unholy"},
+        )

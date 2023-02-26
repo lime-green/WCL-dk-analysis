@@ -181,7 +181,7 @@ class WCLClient:
         # Get pets
         for actor in actors:
             if actor["type"] == "Pet" and actor["petOwner"] == source_id:
-                source.pets.append(actor["id"])
+                source.pets.add(actor["id"])
 
         if fight_id == -1:
             boss_fights = [

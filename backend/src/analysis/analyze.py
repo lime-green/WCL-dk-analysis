@@ -1,6 +1,5 @@
 from analysis.core_analysis import (
     CoreAnalysisConfig,
-    RuneTracker,
     DeadZoneAnalyzer,
     BuffTracker,
 )
@@ -23,12 +22,16 @@ class Analyzer:
         self._fight = fight
         self._events = self._filter_events()
         self.__spec = None
+        self._analysis_config = self.SPEC_ANALYSIS_CONFIGS.get(
+            self._detect_spec(),
+            self.SPEC_ANALYSIS_CONFIGS["Default"],
+        )()
 
     def _get_valid_initial_rune_state(self):
         rune_death_states = [(False, False), (True, False), (False, True), (True, True)]
 
         for rune_death_state in rune_death_states:
-            runes = self._create_rune_tracker()
+            runes = self._analysis_config.create_rune_tracker()
 
             for i, is_death in enumerate(rune_death_state):
                 runes.runes[i].is_death = is_death
@@ -94,14 +97,12 @@ class Analyzer:
                 event["sourceID"] != self._fight.source.id
                 and event["targetID"] != self._fight.source.id
                 and event["sourceID"] not in self._fight.source.pets
+                and event["targetID"] not in self._fight.source.pets
             ):
                 continue
 
             # Don't really care about these
-            if event["type"] in (
-                "applydebuffstack",
-                "heal",
-            ):
+            if event["type"] in ("applydebuffstack",):
                 continue
 
             if (
@@ -148,16 +149,6 @@ class Analyzer:
                 events.append(event)
         return events
 
-    def _create_rune_tracker(self):
-        spec = self._detect_spec()
-        track_drift_type = {"Frost", "Unholy"}
-        if spec == "Unholy":
-            track_drift_type = {"Blood", "Frost", "Unholy"}
-        return RuneTracker(
-            should_convert_blood=spec == "Frost",
-            track_drift_type=track_drift_type,
-        )
-
     def analyze(self):
         if not self._events:
             raise Exception("There are no events to analyze")
@@ -165,14 +156,10 @@ class Analyzer:
         source_id = self._fight.source.id
         combatant_info = self._fight.get_combatant_info(source_id)
         starting_auras = combatant_info.get("auras", [])
-        analysis_config = self.SPEC_ANALYSIS_CONFIGS.get(
-            self._detect_spec(),
-            self.SPEC_ANALYSIS_CONFIGS["Default"],
-        )()
 
         self._analyze_dead_zones()
 
-        runes = self._create_rune_tracker()
+        runes = self._analysis_config.create_rune_tracker()
         initial_rune_state = self._get_valid_initial_rune_state()
         if initial_rune_state:
             for i, is_death in enumerate(initial_rune_state):
@@ -220,15 +207,18 @@ class Analyzer:
         )
 
         analyzers = [runes, buff_tracker]
-        analyzers.extend(analysis_config.get_analyzers(self._fight, buff_tracker))
-        analyzers.append(analysis_config.get_scorer(analyzers))
+        analyzers.extend(self._analysis_config.get_analyzers(self._fight, buff_tracker))
+        analyzers.append(self._analysis_config.get_scorer(analyzers))
 
         source_id = self._fight.source.id
         for event in self._events:
             for analyzer in analyzers:
                 if (
                     event["sourceID"] == source_id or event["targetID"] == source_id
-                ) or analyzer.INCLUDE_PET_EVENTS:
+                ) or (
+                    analyzer.INCLUDE_PET_EVENTS
+                    and (event["is_owner_pet_source"] or event["is_owner_pet_target"])
+                ):
                     analyzer.add_event(event)
 
         displayable_events = self.displayable_events
@@ -257,8 +247,8 @@ class Analyzer:
             "analysis": analysis,
             "events": displayable_events,
             "spec": self._detect_spec(),
-            "show_procs": self._detect_spec() == "Frost",
-            "show_speed": self._detect_spec() == "Frost",
+            "show_procs": self._analysis_config.show_procs,
+            "show_speed": self._analysis_config.show_speed,
         }
 
 

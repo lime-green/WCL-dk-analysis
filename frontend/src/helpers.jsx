@@ -8,7 +8,7 @@ export const formatUsage = (numActual, numPossible, spellName) => {
   let Icon = X
 
   let color = "red"
-  if (score === 1 || numPossible === 0) {
+  if (score >= 1 || numPossible === 0) {
     color = "green"
     Icon = Check
   } else if (score >= 0.5) {
@@ -25,6 +25,32 @@ export const formatUsage = (numActual, numPossible, spellName) => {
           {numActual} of {numPossible}
         </span>{" "}
       possible times
+    </div>
+  )
+}
+
+export const formatCPM = (cpm, targetCPM, spellName) => {
+  const score = cpm / targetCPM
+  let Icon = X
+
+  let color = "red"
+  if (score >= 1) {
+    color = "green"
+    Icon = Check
+  } else if (score >= 0.8) {
+    color = "yellow"
+    Icon = Warning
+  } else if (score > 0.5) {
+    color = "orange"
+  }
+
+  return (
+    <div className="usage-analysis">
+      {Icon}
+      You casted {spellName} <span className={color}>
+          {cpm.toFixed(2)}
+        </span>{" "}
+      times per minute
     </div>
   )
 }

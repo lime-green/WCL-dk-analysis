@@ -95,9 +95,11 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
             self._windows[-1].end = self._end_time
 
         for window in self._windows:
-            uptime_duration += min(window.end, self._end_time) - max(
-                window.start, self._start_time
-            )
+            # If the window is entirely outside the range, ignore it
+            if window.start <= self._end_time and window.end >= self._start_time:
+                uptime_duration += min(window.end, self._end_time) - max(
+                    window.start, self._start_time
+                )
 
         total_duration = self._end_time - self._start_time
         if self._max_duration:
@@ -401,22 +403,33 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
 
 
 class MeleeUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration):
+    def __init__(self, fight_duration, max_swing_speed=2500, event_predicate=None):
         self._fight_duration = fight_duration
         self._windows = []
         self._window = None
-        self._last_event_at = None
+        self._last_swing_at = None
+        self._max_swing_speed = max_swing_speed
+        self._event_predicate = event_predicate
+
+    def predicate(self, event):
+        if self._event_predicate is None:
+            return True
+        return self._event_predicate(event)
 
     def add_event(self, event):
-        if event["type"] == "cast" and event["ability"] == "Melee":
-            if self._window and self._window.end is None:
-                if event["timestamp"] - self._last_event_at >= 2500:
-                    self._window.end = self._last_event_at
-            else:
+        if self._window and self._window.end is None:
+            if event["timestamp"] - self._last_swing_at >= self._max_swing_speed:
+                self._window.end = self._last_swing_at
+
+        if (
+            self.predicate(event)
+            and event["type"] == "cast"
+            and event["ability"] == "Melee"
+        ):
+            if self._window is None or self._window.end is not None:
                 self._window = Window(event["timestamp"])
                 self._windows.append(self._window)
-
-            self._last_event_at = event["timestamp"]
+            self._last_swing_at = event["timestamp"]
 
     def uptime(self):
         if self._windows and self._windows[-1].end is None:
@@ -433,13 +446,102 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
         }
 
 
+class GhoulAnalyzer(BaseAnalyzer):
+    INCLUDE_PET_EVENTS = True
+
+    def __init__(self, fight_duration):
+        self._fight_duration = fight_duration
+        self._num_claws = 0
+        self._num_gnaws = 0
+        self._melee_uptime = MeleeUptimeAnalyzer(
+            fight_duration, event_predicate=self._is_ghoul
+        )
+        self._windows = []
+        self._window = None
+        self.total_damage = 0
+
+    def _is_ghoul(self, event):
+        if not event["is_owner_pet_source"] and not event["is_owner_pet_target"]:
+            return False
+
+        if event["source"] in ("Army of the Dead", "Ebon Gargoyle") or event[
+            "target"
+        ] in ("Army of the Dead", "Ebon Gargoyle"):
+            return False
+
+        return True
+
+    def add_event(self, event):
+        # Should be called at the top so we can update the window
+        self._melee_uptime.add_event(event)
+
+        # Ghoul was revived
+        if event["type"] == "cast" and event["ability"] == "Raise Dead":
+            self._window = Window(event["timestamp"])
+            self._windows.append(self._window)
+            return
+
+        if not self._is_ghoul(event):
+            return
+
+        if event["type"] == "damage":
+            self.total_damage += event["amount"]
+
+        # Ghoul was already alive
+        if not self._windows:
+            self._window = Window(0)
+            self._windows.append(self._window)
+
+        if event["is_owner_pet_source"]:
+            if event["type"] == "cast" and event["ability"] == "Claw":
+                self._num_claws += 1
+            elif event["type"] == "cast" and event["ability"] == "Gnaw":
+                self._num_gnaws += 1
+        elif event["is_owner_pet_target"]:
+            # Ghoul has died
+            if event["type"] == "damage" and event.get("overkill"):
+                self._window.end = event["timestamp"]
+
+    @property
+    def melee_uptime(self):
+        return self._melee_uptime.uptime()
+
+    def uptime(self):
+        if self._windows and self._windows[-1].end is None:
+            self._windows[-1].end = self._fight_duration
+
+        return sum(window.duration for window in self._windows) / self._fight_duration
+
+    def score(self):
+        return ScoreWeight.calculate(
+            ScoreWeight(min(1, self.claw_cpm / 15), 4),
+            ScoreWeight(self.melee_uptime, 10),
+            ScoreWeight(0 if self._num_gnaws else 1, 1),
+        )
+
+    @property
+    def claw_cpm(self):
+        return self._num_claws / (self._fight_duration / 1000 / 60)
+
+    def report(self):
+        return {
+            "ghoul": {
+                "score": self.score(),
+                "num_claws": self._num_claws,
+                "num_gnaws": self._num_gnaws,
+                "melee_uptime": self._melee_uptime.uptime(),
+                "uptime": self.uptime(),
+                "claw_cpm": self.claw_cpm,
+                "claw_cpm_possible": 15,
+                "damage": self.total_damage,
+            }
+        }
+
+
 class UnholyAnalysisScorer(AnalysisScorer):
     def report(self):
         # Rotation
         gargoyle_analyzer = self.get_analyzer(GargoyleAnalyzer)
-        gargoyle_score = ScoreWeight(
-            gargoyle_analyzer.score(), 5 * gargoyle_analyzer.possible_gargoyles
-        )
         bp_score = ScoreWeight(self.get_analyzer(BloodPlagueAnalyzer).score(), 3)
         ff_score = ScoreWeight(self.get_analyzer(BloodPlagueAnalyzer).score(), 3)
         gf_score = ScoreWeight(self.get_analyzer(GhoulFrenzyAnalyzer).score(), 3)
@@ -452,6 +554,14 @@ class UnholyAnalysisScorer(AnalysisScorer):
         )
         melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 3)
         rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
+
+        # Gargoyle
+        gargoyle_score = ScoreWeight(
+            gargoyle_analyzer.score(), 5 * gargoyle_analyzer.possible_gargoyles
+        )
+
+        # Ghoul
+        ghoul_score = ScoreWeight(self.get_analyzer(GhoulAnalyzer).score(), 5)
 
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
@@ -471,6 +581,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
             melee_score,
             rp_score,
             hyperspeed_score,
+            ghoul_score,
         )
 
         return {
@@ -491,6 +602,7 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
             FrostFeverAnalyzer(fight.duration),
             DeathAndDecayUptimeAnalyzer(fight.duration),
             MeleeUptimeAnalyzer(fight.duration),
+            GhoulAnalyzer(fight.duration),
         ]
 
     def get_scorer(self, analyzers):
