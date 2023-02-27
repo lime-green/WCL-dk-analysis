@@ -291,8 +291,8 @@ class HowlingBlastAnalyzer(BaseAnalyzer):
 
 
 class RimeAnalyzer(BaseAnalyzer):
-    def __init__(self):
-        self._num_total = 0
+    def __init__(self, buff_tracker):
+        self._num_total = 1 if "Rime" in buff_tracker else 0
         self._num_used = 0
 
     def add_event(self, event):
@@ -302,9 +302,12 @@ class RimeAnalyzer(BaseAnalyzer):
             self._num_used += 1
 
     def score(self):
-        if not self._num_total:
+        # bug with Razorscale, can start with rime
+        total = max(self._num_total, self._num_used)
+
+        if not total:
             return 0
-        return 1 * (self._num_used / self._num_total)
+        return 1 * (self._num_used / total)
 
     def report(self):
         return {
@@ -390,13 +393,13 @@ class FrostAnalysisConfig(CoreAnalysisConfig):
     show_procs = True
     show_speed = True
 
-    def get_analyzers(self, fight: Fight, buff_tracker_):
-        return super().get_analyzers(fight, buff_tracker_) + [
+    def get_analyzers(self, fight: Fight, buff_tracker):
+        return super().get_analyzers(fight, buff_tracker) + [
             DiseaseAnalyzer(fight.encounter.name, fight.duration),
             KMAnalyzer(),
             UAAnalyzer(fight.duration),
             HowlingBlastAnalyzer(),
-            RimeAnalyzer(),
+            RimeAnalyzer(buff_tracker),
             RaiseDeadAnalyzer(fight.duration),
         ]
 

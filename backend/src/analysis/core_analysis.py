@@ -852,9 +852,6 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
         if self._windows and self._windows[-1].end is None:
             self._windows[-1].end = self._fight_duration
 
-        print(self._windows)
-        print(self._fight_duration)
-
         return sum(window.duration for window in self._windows) / self._fight_duration
 
     def score(self):
