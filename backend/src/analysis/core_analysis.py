@@ -856,6 +856,7 @@ class CoreAnalysisConfig:
     def get_analyzers(self, fight: Fight, buff_tracker_):
         return [
             GCDAnalyzer(),
+            DiseaseAnalyzer(fight.encounter.name, fight.duration),
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
