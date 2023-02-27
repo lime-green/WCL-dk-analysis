@@ -406,7 +406,7 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
     def __init__(self, fight_duration):
         self._dnd_ticks = 0
         self._last_tick_time = None
-        self._max_ticks = fight_duration * 10 / 15 // 1000
+        self._max_ticks = fight_duration * 11 / 15 // 1000
 
     def add_event(self, event):
         if event["type"] == "damage" and event["ability"] == "Death and Decay":
