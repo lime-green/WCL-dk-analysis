@@ -509,6 +509,9 @@ class GhoulAnalyzer(BaseAnalyzer):
 
         # Ghoul was revived
         if event["type"] == "cast" and event["ability"] == "Raise Dead":
+            # It seems this can happen if the ghoul is dismissed
+            if self._window and self._window.end is None:
+                self._window.end = event["timestamp"]
             self._window = Window(event["timestamp"])
             self._windows.append(self._window)
             return
