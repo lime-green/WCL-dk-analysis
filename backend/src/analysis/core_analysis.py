@@ -825,9 +825,6 @@ class CoreAnalysisScorer(AnalysisScorer):
         gcd_score = ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
         drift_score = ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
 
-        # Rotation
-        disease_score = ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
-
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
@@ -836,7 +833,6 @@ class CoreAnalysisScorer(AnalysisScorer):
         total_score = ScoreWeight.calculate(
             gcd_score,
             drift_score,
-            disease_score,
             consume_score,
             bomb_score,
             hyperspeed_score,
@@ -856,7 +852,6 @@ class CoreAnalysisConfig:
     def get_analyzers(self, fight: Fight, buff_tracker_):
         return [
             GCDAnalyzer(),
-            DiseaseAnalyzer(fight.encounter.name, fight.duration),
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
