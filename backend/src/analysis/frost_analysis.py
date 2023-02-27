@@ -6,6 +6,7 @@ from analysis.core_analysis import (
     DiseaseAnalyzer,
     GCDAnalyzer,
     HyperspeedAnalyzer,
+    MeleeUptimeAnalyzer,
     RuneTracker,
 )
 from console_table import console
@@ -356,6 +357,7 @@ class FrostAnalysisScorer(AnalysisScorer):
         raise_dead_score = ScoreWeight(
             raise_dead.score(), raise_dead.possible_raise_deads
         )
+        melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 2)
 
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
@@ -374,6 +376,7 @@ class FrostAnalysisScorer(AnalysisScorer):
             raise_dead_score,
             bomb_score,
             hyperspeed_score,
+            melee_score,
         )
 
         return {

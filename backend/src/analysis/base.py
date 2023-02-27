@@ -48,3 +48,30 @@ class AnalysisScorer(BaseAnalyzer):
                 "total_score": 1,
             }
         }
+
+
+class Window:
+    start: int
+    end: int
+
+    def __init__(self, start, end=None):
+        self.start = start
+        self.end = end
+
+    @property
+    def duration(self):
+        if self.end is None:
+            return None
+        return self.end - self.start
+
+    def intersects(self, other):
+        return range_overlap((self.start, self.end), (other.start, other.end))
+
+    def intersection(self, other):
+        if not self.intersects(other):
+            return None
+
+        return Window(max(self.start, other.start), min(self.end, other.end))
+
+    def __repr__(self):
+        return f"<Window start={self.start} end={self.end}>"

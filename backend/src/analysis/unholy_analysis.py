@@ -1,6 +1,6 @@
 from typing import List
 
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, range_overlap
+from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, range_overlap, Window
 from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
@@ -8,35 +8,9 @@ from analysis.core_analysis import (
     GCDAnalyzer,
     HyperspeedAnalyzer,
     RPAnalyzer,
+    MeleeUptimeAnalyzer,
 )
 from report import Fight
-
-
-class Window:
-    start: int
-    end: int
-
-    def __init__(self, start, end=None):
-        self.start = start
-        self.end = end
-
-    @property
-    def duration(self):
-        if self.end is None:
-            return None
-        return self.end - self.start
-
-    def intersects(self, other):
-        return range_overlap((self.start, self.end), (other.start, other.end))
-
-    def intersection(self, other):
-        if not self.intersects(other):
-            return None
-
-        return Window(max(self.start, other.start), min(self.end, other.end))
-
-    def __repr__(self):
-        return f"<Window start={self.start} end={self.end}>"
 
 
 class BuffUptimeAnalyzer(BaseAnalyzer):
@@ -431,50 +405,6 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
                 "ticks": self._dnd_ticks,
                 "max_ticks": self._max_ticks,
             }
-        }
-
-
-class MeleeUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, max_swing_speed=2500, event_predicate=None):
-        self._fight_duration = fight_duration
-        self._windows = []
-        self._window = None
-        self._last_swing_at = None
-        self._max_swing_speed = max_swing_speed
-        self._event_predicate = event_predicate
-
-    def predicate(self, event):
-        if self._event_predicate is None:
-            return True
-        return self._event_predicate(event)
-
-    def add_event(self, event):
-        if self._window and self._window.end is None:
-            if event["timestamp"] - self._last_swing_at >= self._max_swing_speed:
-                self._window.end = self._last_swing_at
-
-        if (
-            self.predicate(event)
-            and event["type"] == "cast"
-            and event["ability"] == "Melee"
-        ):
-            if self._window is None or self._window.end is not None:
-                self._window = Window(event["timestamp"])
-                self._windows.append(self._window)
-            self._last_swing_at = event["timestamp"]
-
-    def uptime(self):
-        if self._windows and self._windows[-1].end is None:
-            self._windows[-1].end = self._fight_duration
-
-        return sum(window.duration for window in self._windows) / self._fight_duration
-
-    def score(self):
-        return self.uptime()
-
-    def report(self):
-        return {
-            "melee_uptime": self.uptime(),
         }
 
 

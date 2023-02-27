@@ -1,6 +1,6 @@
 from typing import Optional
 
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
+from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, Window
 from console_table import console
 from report import Fight
 
@@ -819,6 +819,53 @@ class CoreAbilities(BaseAnalyzer):
                 event["is_core_cast"] = False
 
 
+class MeleeUptimeAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_duration, max_swing_speed=2500, event_predicate=None):
+        self._fight_duration = fight_duration
+        self._windows = []
+        self._window = None
+        self._last_swing_at = None
+        self._max_swing_speed = max_swing_speed
+        self._event_predicate = event_predicate
+
+    def predicate(self, event):
+        if self._event_predicate is None:
+            return True
+        return self._event_predicate(event)
+
+    def add_event(self, event):
+        if self._window and self._window.end is None:
+            if event["timestamp"] - self._last_swing_at >= self._max_swing_speed:
+                self._window.end = self._last_swing_at
+
+        if (
+            self.predicate(event)
+            and event["type"] == "cast"
+            and event["ability"] == "Melee"
+        ):
+            if self._window is None or self._window.end is not None:
+                self._window = Window(event["timestamp"])
+                self._windows.append(self._window)
+            self._last_swing_at = event["timestamp"]
+
+    def uptime(self):
+        if self._windows and self._windows[-1].end is None:
+            self._windows[-1].end = self._fight_duration
+
+        print(self._windows)
+        print(self._fight_duration)
+
+        return sum(window.duration for window in self._windows) / self._fight_duration
+
+    def score(self):
+        return self.uptime()
+
+    def report(self):
+        return {
+            "melee_uptime": self.uptime(),
+        }
+
+
 class CoreAnalysisScorer(AnalysisScorer):
     def report(self):
         # Speed
@@ -829,6 +876,7 @@ class CoreAnalysisScorer(AnalysisScorer):
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
         bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
         hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
+        melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 2)
 
         total_score = ScoreWeight.calculate(
             gcd_score,
@@ -836,6 +884,7 @@ class CoreAnalysisScorer(AnalysisScorer):
             consume_score,
             bomb_score,
             hyperspeed_score,
+            melee_score,
         )
 
         return {
@@ -856,6 +905,7 @@ class CoreAnalysisConfig:
             CoreAbilities(),
             BombAnalyzer(fight.duration),
             HyperspeedAnalyzer(fight.duration),
+            MeleeUptimeAnalyzer(fight.duration),
         ]
 
     def get_scorer(self, analyzers):
