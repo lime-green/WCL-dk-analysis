@@ -206,9 +206,9 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
 
 
 class GargoyleWindow(Window):
-    def __init__(self, start, buff_tracker):
+    def __init__(self, start, fight_duration, buff_tracker):
         self.start = start
-        self.end = start + 30000
+        self.end = min(start + 30000, fight_duration)
         self._gargoyle_first_cast = None
         self.snapshotted_greatness = "Greatness" in buff_tracker
         self.snapshotted_fc = "Unholy Strength" in buff_tracker
@@ -315,7 +315,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
-            self._window = GargoyleWindow(event["timestamp"], self._buff_tracker)
+            self._window = GargoyleWindow(event["timestamp"], self._fight_duration, self._buff_tracker)
             self.windows.append(self._window)
 
         if not self._window:
@@ -587,7 +587,7 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
                 ignore_index += 1
 
             # in case we have an ignore window that overlaps with multiple windows
-            # ignore_index -= 1
+            ignore_index -= 1
 
         total_duration_without_ignores = self._fight_duration - sum(window.duration for window in self._ignore_windows)
         return total_uptime / total_duration_without_ignores
