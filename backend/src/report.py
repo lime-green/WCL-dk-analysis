@@ -170,7 +170,7 @@ class Report:
 
         if ability_id == 48266:
             return "Blood Presence"
-        if ability_id == 48265:
+        if ability_id in (48265, 49772):
             return "Unholy Presence"
         if ability_id == 48263:
             return "Frost Presence"
@@ -198,13 +198,13 @@ class Report:
                 return "Leader of the Pack"
             if ability_id == 53762:
                 return "Indestructible"
-            logging.exception(f"No ability name found for id: {ability_id}")
+            logging.warning(f"No ability name found for id: {ability_id}")
             return "Unknown"
 
     def get_ability_icon(self, ability_id: int):
         if ability_id == 48266:
             return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_bloodpresence.jpg"
-        if ability_id == 48265:
+        if ability_id in (48265, 49772):
             return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_unholypresence.jpg"
         if ability_id == 48263:
             return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_frostpresence.jpg"
@@ -249,7 +249,7 @@ class Report:
                 return "https://wow.zamimg.com/images/wow/icons/large/spell_nature_unyeildingstamina.jpg"
             if ability_id == 53762:
                 return "https://wow.zamimg.com/images/wow/icons/large/inv_alchemy_elixir_empty.jpg"
-            logging.exception(f"No ability icon found for id: {ability_id}")
+            logging.warning(f"No ability icon found for id: {ability_id}")
             return "https://wow.zamimg.com/images/wow/icons/large/trade_engineering.jpg"
 
     def get_ability_type(self, ability_id: int):
