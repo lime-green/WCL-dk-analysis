@@ -5,6 +5,7 @@ from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
     CoreAnalysisConfig,
+    GCDAnalyzer,
     HyperspeedAnalyzer,
     RPAnalyzer,
 )
@@ -205,6 +206,28 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
         return {"ghoul_frenzy_uptime": self.uptime()}
 
 
+class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
+    def __init__(self, duration, buff_tracker, start_time=0):
+        super().__init__(duration, buff_tracker, "Unholy Presence", start_time)
+        self._last_ability_at = None
+
+    def add_event(self, event):
+        super().add_event(event)
+
+        if (
+            not self._windows
+            and self._last_ability_at
+            and event["type"] == "cast"
+            and event["ability"] not in GCDAnalyzer.NO_GCD
+            and not event["is_owner_pet_source"]
+            and not event["is_owner_pet_target"]
+            and event["timestamp"] - self._last_ability_at < 1250
+        ):
+            self._add_window(self._start_time)
+        elif event["type"] == "cast" and event["ability"] in ("Blood Strike", "Plague Strike"):
+            self._last_ability_at = event["timestamp"]
+
+
 class GargoyleWindow(Window):
     def __init__(self, start, fight_duration, buff_tracker):
         self.start = start
@@ -212,8 +235,8 @@ class GargoyleWindow(Window):
         self._gargoyle_first_cast = None
         self.snapshotted_greatness = "Greatness" in buff_tracker
         self.snapshotted_fc = "Unholy Strength" in buff_tracker
-        self._up_uptime = BuffUptimeAnalyzer(
-            self.end, buff_tracker, "Unholy Presence", self.start
+        self._up_uptime = UnholyPresenceUptimeAnalyzer(
+            self.end, buff_tracker, self.start
         )
         self._bl_uptime = BuffUptimeAnalyzer(
             self.end, buff_tracker, {"Bloodlust", "Heroism"}, self.start
