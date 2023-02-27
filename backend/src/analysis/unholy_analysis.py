@@ -415,7 +415,7 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
                 or event["timestamp"] - self._last_tick_time > 800
             ):
                 self._dnd_ticks += 1
-            self._last_tick_time = event["timestamp"]
+                self._last_tick_time = event["timestamp"]
 
     def uptime(self):
         return min(1, self._dnd_ticks / self._max_ticks)
