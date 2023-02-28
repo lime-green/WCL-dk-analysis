@@ -98,7 +98,11 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event.get("target") != "Razorscale":
             return
 
-        if event["type"] != "cast" or event["ability"] not in (*self.MELEE_ABILITIES, "Icy Touch", "Death Coil"):
+        if event["type"] != "cast" or event["ability"] not in (
+            *self.MELEE_ABILITIES,
+            "Icy Touch",
+            "Death Coil",
+        ):
             return
 
         if event["source"] != self._fight.source.name:
@@ -788,7 +792,11 @@ class HyperspeedAnalyzer(BaseAnalyzer):
         return max(1 + (self._fight_duration - 5000) // 63000, self._num_hyperspeeds)
 
     def score(self):
-        return self._num_hyperspeeds / self.possible_hyperspeeds
+        return (
+            self._num_hyperspeeds / self.possible_hyperspeeds
+            if self.possible_hyperspeeds
+            else 1
+        )
 
     def report(self):
         return {

@@ -1,6 +1,12 @@
 from typing import List
 
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, range_overlap, Window
+from analysis.base import (
+    AnalysisScorer,
+    BaseAnalyzer,
+    ScoreWeight,
+    range_overlap,
+    Window,
+)
 from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
@@ -80,7 +86,9 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
 
         for window in self._windows:
             # If the window is entirely outside the range, ignore it
-            if range_overlap((window.start, window.end), (self._start_time, self._end_time)):
+            if range_overlap(
+                (window.start, window.end), (self._start_time, self._end_time)
+            ):
                 uptime_duration += min(window.end, self._end_time) - max(
                     window.start, self._start_time
                 )
@@ -198,7 +206,10 @@ class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
             and event["timestamp"] - self._last_ability_at < 1250
         ):
             self._add_window(self._start_time)
-        elif event["type"] == "cast" and event["ability"] in ("Blood Strike", "Plague Strike"):
+        elif event["type"] == "cast" and event["ability"] in (
+            "Blood Strike",
+            "Plague Strike",
+        ):
             self._last_ability_at = event["timestamp"]
 
 
@@ -312,7 +323,9 @@ class GargoyleAnalyzer(BaseAnalyzer):
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
-            self._window = GargoyleWindow(event["timestamp"], self._fight_duration, self._buff_tracker)
+            self._window = GargoyleWindow(
+                event["timestamp"], self._fight_duration, self._buff_tracker
+            )
             self.windows.append(self._window)
 
         if not self._window:
@@ -516,7 +529,10 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
 
     def add_event(self, event):
         if not self._windows:
-            if event["type"] in ("heal", "removebuff") and event["ability"] == "Blood Presence":
+            if (
+                event["type"] in ("heal", "removebuff")
+                and event["ability"] == "Blood Presence"
+            ):
                 self._add_window(0)
             elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
                 self._add_window(0)
@@ -534,10 +550,14 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
         ignore_index = 0
 
         for window in self._windows:
-            while ignore_index < len(self._ignore_windows) and not window.intersects(self._ignore_windows[ignore_index]):
+            while ignore_index < len(self._ignore_windows) and not window.intersects(
+                self._ignore_windows[ignore_index]
+            ):
                 ignore_index += 1
 
-            while ignore_index < len(self._ignore_windows) and window.intersects(self._ignore_windows[ignore_index]):
+            while ignore_index < len(self._ignore_windows) and window.intersects(
+                self._ignore_windows[ignore_index]
+            ):
                 intersection = window.intersection(self._ignore_windows[ignore_index])
                 total_uptime -= intersection.duration
                 ignore_index += 1
@@ -546,7 +566,9 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
             if ignore_index:
                 ignore_index -= 1
 
-        total_duration_without_ignores = self._fight_duration - sum(window.duration for window in self._ignore_windows)
+        total_duration_without_ignores = self._fight_duration - sum(
+            window.duration for window in self._ignore_windows
+        )
         return total_uptime / total_duration_without_ignores
 
     def score(self):
@@ -574,7 +596,9 @@ class UnholyAnalysisScorer(AnalysisScorer):
         )
         melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 3)
         rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
-        blood_presence_score = ScoreWeight(self.get_analyzer(BloodPresenceUptimeAnalyzer).score(), 3)
+        blood_presence_score = ScoreWeight(
+            self.get_analyzer(BloodPresenceUptimeAnalyzer).score(), 3
+        )
 
         # Gargoyle
         gargoyle_score = ScoreWeight(
