@@ -11,6 +11,8 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         "Obliterate",
         "Frost Strike",
         "Blood Strike",
+        "Plague Strike",
+        "Pestilence",
     }
 
     class DeadZone:
@@ -96,7 +98,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event.get("target") != "Razorscale":
             return
 
-        if event["type"] != "cast" or event["ability"] not in self.MELEE_ABILITIES:
+        if event["type"] != "cast" or event["ability"] not in (*self.MELEE_ABILITIES, "Icy Touch", "Death Coil"):
             return
 
         if event["source"] != self._fight.source.name:

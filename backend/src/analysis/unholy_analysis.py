@@ -543,7 +543,8 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
                 ignore_index += 1
 
             # in case we have an ignore window that overlaps with multiple windows
-            ignore_index -= 1
+            if ignore_index:
+                ignore_index -= 1
 
         total_duration_without_ignores = self._fight_duration - sum(window.duration for window in self._ignore_windows)
         return total_uptime / total_duration_without_ignores
