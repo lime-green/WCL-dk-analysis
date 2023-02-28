@@ -314,7 +314,7 @@ class Fight:
                 first_razorscale_event = event["timestamp"]
                 break
         else:
-            raise Exception("Razorscale event not found")
+            return []
 
         filtered_events = []
 

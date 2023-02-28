@@ -150,9 +150,6 @@ class Analyzer:
         return events
 
     def analyze(self):
-        if not self._events:
-            raise Exception("There are no events to analyze")
-
         source_id = self._fight.source.id
         combatant_info = self._fight.get_combatant_info(source_id)
         starting_auras = combatant_info.get("auras", [])
