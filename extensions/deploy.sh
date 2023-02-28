@@ -14,3 +14,6 @@ sed -i '' 's/"action"/"browser_action"/' /tmp/manifest.json
 
 cd /tmp
 zip "${cwd}/firefox_extension.zip" -u manifest.json
+
+# No changes needed
+cp chrome_extension.zip edge_extension.zip
