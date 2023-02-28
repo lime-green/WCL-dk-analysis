@@ -530,7 +530,7 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if not self._windows:
             if (
-                event["type"] in ("heal", "removebuff")
+                event["type"] == "heal"
                 and event["ability"] == "Blood Presence"
             ):
                 self._add_window(0)
