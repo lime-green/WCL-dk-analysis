@@ -547,24 +547,11 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
             self._windows[-1].end = self._fight_duration
 
         total_uptime = sum(window.duration for window in self._windows)
-        ignore_index = 0
 
         for window in self._windows:
-            while ignore_index < len(self._ignore_windows) and not window.intersects(
-                self._ignore_windows[ignore_index]
-            ):
-                ignore_index += 1
-
-            while ignore_index < len(self._ignore_windows) and window.intersects(
-                self._ignore_windows[ignore_index]
-            ):
-                intersection = window.intersection(self._ignore_windows[ignore_index])
-                total_uptime -= intersection.duration
-                ignore_index += 1
-
-            # in case we have an ignore window that overlaps with multiple windows
-            if ignore_index:
-                ignore_index -= 1
+            for ignore_window in self._ignore_windows:
+                if window.intersects(ignore_window):
+                    total_uptime -= window.intersection(ignore_window).duration
 
         total_duration_without_ignores = self._fight_duration - sum(
             window.duration for window in self._ignore_windows
