@@ -37,6 +37,7 @@ class WCLClient:
 {
   reportData {
     report(code: "%s") {
+      endTime
       masterData {
         abilities {
           gameID
@@ -208,6 +209,7 @@ class WCLClient:
             actors,
             report_metadata["masterData"]["abilities"],
             report_metadata["fights"],
+            report_metadata["endTime"],
         )
 
     async def _query(self, query, description):

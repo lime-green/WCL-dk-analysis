@@ -73,6 +73,7 @@ class Report:
         actors,
         abilities,
         fights,
+        end_time,
     ):
         self.source = source
         self._events = events
@@ -86,6 +87,7 @@ class Report:
         self._actors = {actor["id"]: actor for actor in actors}
         self._abilities = abilities
         self._fights = {fight["id"]: fight for fight in fights}
+        self.end_time = end_time
 
         _boss_fights = [fight for fight in fights if fight["encounterID"] != 0]
         if _boss_fights:

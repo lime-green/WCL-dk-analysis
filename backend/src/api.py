@@ -3,6 +3,7 @@ import logging
 import functools
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from typing import Dict
 
 import sentry_sdk
@@ -70,5 +71,10 @@ async def analyze_fight(
         ThreadPoolExecutor(), functools.partial(analyze, report, fight_id)
     )
 
-    response.headers["Cache-Control"] = "max-age=86400"
+    # don't cache reports that are less than a day old
+    ended_ago = datetime.now() - datetime.fromtimestamp(report.end_time / 1000)
+    if fight_id == -1 and ended_ago < timedelta(days=1):
+        response.headers["Cache-Control"] = "no-cache"
+    else:
+        response.headers["Cache-Control"] = "max-age=86400"
     return {"data": events}
