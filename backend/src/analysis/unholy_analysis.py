@@ -540,7 +540,9 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
         elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
             self._window.end = event["timestamp"]
         elif event["type"] == "applybuff" and event["ability"] == "Blood Presence":
-            self._add_window(event["timestamp"])
+            # This seems to happen if the buff is refreshed (somehow?)
+            if self._window.end is not None:
+                self._add_window(event["timestamp"])
 
     def uptime(self):
         if self._windows and self._windows[-1].end is None:
