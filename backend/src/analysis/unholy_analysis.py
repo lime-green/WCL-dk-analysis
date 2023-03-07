@@ -11,7 +11,6 @@ from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
     CoreAnalysisConfig,
-    GCDAnalyzer,
     HyperspeedAnalyzer,
     RPAnalyzer,
     MeleeUptimeAnalyzer,
@@ -21,7 +20,12 @@ from report import Fight
 
 class BuffUptimeAnalyzer(BaseAnalyzer):
     def __init__(
-        self, end_time, buff_tracker: BuffTracker, buff_names, start_time=0, max_duration=None
+        self,
+        end_time,
+        buff_tracker: BuffTracker,
+        buff_names,
+        start_time=0,
+        max_duration=None,
     ):
         self._start_time = start_time
         self._end_time = end_time

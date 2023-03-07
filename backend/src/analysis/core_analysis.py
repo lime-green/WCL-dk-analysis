@@ -592,12 +592,14 @@ class BuffTracker(BaseAnalyzer):
                 containing_window = buff_windows.containing_window(timestamp)
 
                 if containing_window:
-                    windows.append({
-                        "ability": buff,
-                        "ability_icon": buff_windows.icon,
-                        "abilityGameID": buff_windows.buff_id,
-                        "start": containing_window.start,
-                    })
+                    windows.append(
+                        {
+                            "ability": buff,
+                            "ability_icon": buff_windows.icon,
+                            "abilityGameID": buff_windows.buff_id,
+                            "start": containing_window.start,
+                        }
+                    )
         return sorted(windows, key=lambda x: x["start"])
 
     def decorate_event(self, event):
