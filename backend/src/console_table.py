@@ -1,11 +1,10 @@
-import os
 from datetime import timedelta
 
 from rich.console import Console
 from rich.table import Table
 
 # Don't print report to console if in lambda
-SHOULD_PRINT = os.environ.get("AWS_EXECUTION_ENV") is None
+SHOULD_PRINT = False
 
 # console = Console(quiet=not SHOULD_PRINT)
 console = Console(quiet=True)
