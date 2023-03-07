@@ -188,8 +188,6 @@ class GargoyleWindow(Window):
             self._speed_uptime,
             self._hyperspeed_uptime,
         ]
-        self.used_hyperspeed = buff_tracker.is_active("Hyperspeed Acceleration", start)
-        self.used_speed_pot = buff_tracker.is_active("Speed", start)
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
@@ -233,18 +231,6 @@ class GargoyleWindow(Window):
 
         if event["type"] == "damage" and event["source"] == "Ebon Gargoyle":
             self.total_damage += event["amount"]
-
-        if event["timestamp"] > self.end:
-            return
-
-        if event["type"] != "cast":
-            return
-
-        if event["ability"] == "Hyperspeed Acceleration":
-            self.used_hyperspeed = True
-
-        if event["ability"] == "Speed":
-            self.used_speed_pot = True
 
     def score(self):
         return ScoreWeight.calculate(
@@ -299,9 +285,6 @@ class GargoyleAnalyzer(BaseAnalyzer):
                 "score": self.score(),
                 "num_possible": self.possible_gargoyles,
                 "num_actual": len(self.windows),
-                "used_speed_potion": any(
-                    window.used_speed_pot for window in self.windows
-                ),
                 "bloodlust_uptime": next(
                     (window.bl_uptime for window in self.windows if window.bl_uptime),
                     0,
@@ -318,9 +301,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "damage": window.total_damage,
                         "snapshotted_greatness": window.snapshotted_greatness,
                         "snapshotted_fc": window.snapshotted_fc,
-                        "used_hyperspeed": window.used_hyperspeed,
                         "unholy_presence_uptime": window.up_uptime,
-                        "used_speed_potion": window.used_speed_pot,
                         "bloodlust_uptime": window.bl_uptime,
                         "num_casts": window.num_casts,
                         "num_melees": window.num_melees,
