@@ -21,70 +21,31 @@ from report import Fight
 
 class BuffUptimeAnalyzer(BaseAnalyzer):
     def __init__(
-        self, end_time, buff_tracker, buff_names, start_time=0, max_duration=None
+        self, end_time, buff_tracker: BuffTracker, buff_names, start_time=0, max_duration=None
     ):
         self._start_time = start_time
         self._end_time = end_time
-        self._windows = []
-        self._window = None
         self._max_duration = max_duration
+        self._buff_tracker = buff_tracker
 
         if isinstance(buff_names, set):
             self._buff_names = buff_names
         else:
             self._buff_names = {buff_names}
 
-        for buff_name in buff_names:
-            if buff_name in buff_tracker:
-                self._add_window(start_time)
+    def _get_windows(self):
+        for buff_name in self._buff_names:
+            for window in self._buff_tracker.get_windows(buff_name):
+                yield window
 
-    def _add_window(self, start, end=None):
-        assert self._start_time <= start
-        if end:
-            assert end <= self._end_time
-
-        self._window = Window(start, end)
-        self._windows.append(self._window)
-
-    def set_start_time(self, start):
-        self._start_time = start
-
-    def add_event(self, event):
-        if event["type"] not in (
-            "applybuff",
-            "removebuff",
-            "removebuffstack",
-            "refreshbuff",
-        ):
-            return
-
-        if event["ability"] not in self._buff_names:
-            return
-
-        if (
-            event["type"] in ("removebuffstack", "refreshbuff")
-            and event["timestamp"] <= self._end_time
-        ):
-            # If we don't have a window, assume it was a starting aura
-            if not self._windows:
-                self._add_window(self._start_time)
-        elif event["type"] == "applybuff" and event["timestamp"] <= self._end_time:
-            if not self._window or self._window.end is not None:
-                self._add_window(event["timestamp"])
-        elif event["type"] == "removebuff":
-            end = min(event["timestamp"], self._end_time)
-            if self._window and not self._window.end:
-                self._window.end = end
-            elif not self._windows:  # assume it was a starting aura
-                self._add_window(self._start_time, end)
+    def set_start_time(self, start_time):
+        self._start_time = start_time
 
     def uptime(self):
         uptime_duration = 0
+        windows = self._get_windows()
 
-        if self._windows and self._windows[-1].end is None:
-            self._windows[-1].end = self._end_time
-
-        for window in self._windows:
+        for window in windows:
             # If the window is entirely outside the range, ignore it
             if range_overlap(
                 (window.start, window.end), (self._start_time, self._end_time)
@@ -193,33 +154,14 @@ class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
         super().__init__(duration, buff_tracker, "Unholy Presence", start_time)
         self._last_ability_at = None
 
-    def add_event(self, event):
-        super().add_event(event)
-
-        if (
-            not self._windows
-            and self._last_ability_at
-            and event["type"] == "cast"
-            and event["ability"] not in GCDAnalyzer.NO_GCD
-            and not event["is_owner_pet_source"]
-            and not event["is_owner_pet_target"]
-            and event["timestamp"] - self._last_ability_at < 1250
-        ):
-            self._add_window(self._start_time)
-        elif event["type"] == "cast" and event["ability"] in (
-            "Blood Strike",
-            "Plague Strike",
-        ):
-            self._last_ability_at = event["timestamp"]
-
 
 class GargoyleWindow(Window):
-    def __init__(self, start, fight_duration, buff_tracker):
+    def __init__(self, start, fight_duration, buff_tracker: BuffTracker):
         self.start = start
         self.end = min(start + 30000, fight_duration)
         self._gargoyle_first_cast = None
-        self.snapshotted_greatness = "Greatness" in buff_tracker
-        self.snapshotted_fc = "Unholy Strength" in buff_tracker
+        self.snapshotted_greatness = buff_tracker.is_active("Greatness", start)
+        self.snapshotted_fc = buff_tracker.is_active("Unholy Strength", start)
         self._up_uptime = UnholyPresenceUptimeAnalyzer(
             self.end, buff_tracker, self.start
         )
@@ -242,8 +184,8 @@ class GargoyleWindow(Window):
             self._speed_uptime,
             self._hyperspeed_uptime,
         ]
-        self.used_hyperspeed = "Hyperspeed Acceleration" in buff_tracker
-        self.used_speed_pot = "Speed" in buff_tracker
+        self.used_hyperspeed = buff_tracker.is_active("Hyperspeed Acceleration", start)
+        self.used_speed_pot = buff_tracker.is_active("Speed", start)
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
@@ -517,40 +459,16 @@ class GhoulAnalyzer(BaseAnalyzer):
 
 
 class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, ignore_windows):
-        self._windows = []
-        self._window = None
-        self._fight_duration = fight_duration
+    def __init__(self, fight_duration, buff_tracker: BuffTracker, ignore_windows):
+        self._buff_tracker = buff_tracker
         self._ignore_windows = ignore_windows
-
-    def _add_window(self, start):
-        self._window = Window(start)
-        self._windows.append(self._window)
-
-    def add_event(self, event):
-        if not self._windows:
-            if (
-                event["type"] == "heal"
-                and event["ability"] == "Blood Presence"
-            ):
-                self._add_window(0)
-            elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
-                self._add_window(0)
-                self._window.end = event["timestamp"]
-        elif event["type"] == "removebuff" and event["ability"] == "Blood Presence":
-            self._window.end = event["timestamp"]
-        elif event["type"] == "applybuff" and event["ability"] == "Blood Presence":
-            # This seems to happen if the buff is refreshed (somehow?)
-            if self._window.end is not None:
-                self._add_window(event["timestamp"])
+        self._fight_duration = fight_duration
 
     def uptime(self):
-        if self._windows and self._windows[-1].end is None:
-            self._windows[-1].end = self._fight_duration
+        windows = self._buff_tracker.get_windows("Blood Presence")
+        total_uptime = sum(window.duration for window in windows)
 
-        total_uptime = sum(window.duration for window in self._windows)
-
-        for window in self._windows:
+        for window in windows:
             for ignore_window in self._ignore_windows:
                 if window.intersects(ignore_window):
                     total_uptime -= window.intersection(ignore_window).duration
@@ -641,7 +559,7 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
             DeathAndDecayUptimeAnalyzer(fight.duration),
             MeleeUptimeAnalyzer(fight.duration),
             GhoulAnalyzer(fight.duration),
-            BloodPresenceUptimeAnalyzer(fight.duration, gargoyle.windows),
+            BloodPresenceUptimeAnalyzer(fight.duration, buff_tracker, gargoyle.windows),
         ]
 
     def get_scorer(self, analyzers):

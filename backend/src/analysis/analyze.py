@@ -26,6 +26,7 @@ class Analyzer:
             self._detect_spec(),
             self.SPEC_ANALYSIS_CONFIGS["Default"],
         )()
+        self._buff_tracker = None
 
     def _get_valid_initial_rune_state(self):
         rune_death_states = [(False, False), (True, False), (False, True), (True, True)]
@@ -45,16 +46,64 @@ class Analyzer:
 
         return None
 
-    def _analyze_dead_zones(self):
+    def _preprocess_events(self):
         dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
+        buff_tracker = self._get_buff_tracker()
 
         for event in self._events:
-            dead_zone_analyzer.add_event(event)
+            dead_zone_analyzer.preprocess_event(event)
+            buff_tracker.preprocess_event(event)
 
         for event in self._events:
             dead_zone_analyzer.decorate_event(event)
+            buff_tracker.decorate_event(event)
 
         return dead_zone_analyzer
+
+    def _get_buff_tracker(self):
+        if self._buff_tracker is None:
+            source_id = self._fight.source.id
+            combatant_info = self._fight.get_combatant_info(source_id)
+            starting_auras = combatant_info.get("auras", [])
+
+            self._buff_tracker = BuffTracker(
+                {
+                    "Unbreakable Armor",
+                    "Heroism",
+                    "Bloodlust",
+                    "Speed",
+                    "Rime",
+                    "Meteorite Whetstone",
+                    "Hyperspeed Acceleration",
+                    "Reflection of Torment",
+                    "Greatness",
+                    "Killing Machine",
+                    "Grim Toll",
+                    "Indestructible",
+                    "Mark of Norgannon",
+                    "Berserking",
+                    "Blood Fury",
+                    "Black Magic",
+                    "Swordguard Embroidery",
+                    "Unholy Strength",
+                    "Skyflare Swiftness",
+                    "Edward's Insight",
+                    "Loatheb's Shadow",
+                    "Cinderglacier",
+                    "Mjolnir Runestone",
+                    "Implosion",  # Dark Matter
+                    "Comet's Trail",
+                    "Wrathstone",
+                    "Blood of the Old God",
+                    "Pyrite Infusion",
+                    "Fury of the Five Flights",
+                    "Desolation",
+                },
+                self._fight.end_time,
+                starting_auras,
+                self._detect_spec(),
+            )
+        return self._buff_tracker
 
     def _detect_spec(self):
         if not self.__spec:
@@ -150,11 +199,7 @@ class Analyzer:
         return events
 
     def analyze(self):
-        source_id = self._fight.source.id
-        combatant_info = self._fight.get_combatant_info(source_id)
-        starting_auras = combatant_info.get("auras", [])
-
-        self._analyze_dead_zones()
+        self._preprocess_events()
 
         runes = self._analysis_config.create_rune_tracker()
         initial_rune_state = self._get_valid_initial_rune_state()
@@ -166,43 +211,8 @@ class Analyzer:
             has_rune_error = True
 
         table = EventsTable()
-        buff_tracker = BuffTracker(
-            {
-                "Unbreakable Armor": "UA",
-                "Heroism": "Lust",
-                "Bloodlust": "Lust",
-                "Speed": "Speed",
-                "Rime": "Rime",
-                "Meteorite Whetstone": "Whetstone",
-                "Hyperspeed Acceleration": "Gloves",
-                "Reflection of Torment": "Mirror",
-                "Greatness": "Greatness",
-                "Killing Machine": "KM",
-                "Grim Toll": "Grim Toll",
-                "Indestructible": "Indestructible",
-                "Mark of Norgannon": "Mark",
-                "Berserking": "Berserking",
-                "Blood Fury": "Blood Fury",
-                "Black Magic": "Black Magic",
-                "Swordguard Embroidery": "Swordguard Embroidery",
-                "Unholy Strength": "Unholy Strength",
-                "Skyflare Swiftness": "Skyflare Swiftness",
-                "Edward's Insight": "Edward's Insight",
-                "Loatheb's Shadow": "Loatheb's Shadow",
-                "Cinderglacier": "Cinderglacier",
-                "Mjolnir Runestone": "Mjolnir Runestone",
-                "Implosion": "Implosion",  # Dark Matter
-                "Comet's Trail": "Comet's Trail",
-                "Wrathstone": "Wrathstone",
-                "Blood of the Old God": "Blood of the Old God",
-                "Pyrite Infusion": "Pyrite Infusion",
-                "Fury of the Five Flights": "Fury of the Five Flights",
-                "Desolation": "Desolation",
-            },
-            starting_auras,
-            self._detect_spec(),
-        )
 
+        buff_tracker = self._get_buff_tracker()
         analyzers = [runes, buff_tracker]
         analyzers.extend(self._analysis_config.get_analyzers(self._fight, buff_tracker))
         analyzers.append(self._analysis_config.get_scorer(analyzers))

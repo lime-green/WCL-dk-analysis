@@ -136,7 +136,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
 
         self._last_event = event
 
-    def add_event(self, event):
+    def preprocess_event(self, event):
         if not self._checker:
             return
 
@@ -438,96 +438,170 @@ class RuneTracker(BaseAnalyzer):
         }
 
 
+class BuffWindows:
+    def __init__(self, buff_name, buff_id, icon):
+        self.buff_name = buff_name
+        self.buff_id = buff_id
+        self.icon = icon
+        self._windows = []
+
+    @property
+    def has_window(self):
+        return len(self._windows) > 0
+
+    @property
+    def has_active_window(self):
+        return self.has_window and self._windows[-1].end is None
+
+    @property
+    def active_window(self):
+        if not self.has_window:
+            return None
+        return self._windows[-1]
+
+    @property
+    def windows(self):
+        return self._windows
+
+    @property
+    def num_windows(self):
+        return len(self._windows)
+
+    def add_window(self, start, end=None):
+        self._windows.append(Window(start, end))
+
+    def contains(self, timestamp):
+        for window in self._windows:
+            if window.contains(timestamp):
+                return True
+        return False
+
+    def containing_window(self, timestamp):
+        for window in self._windows:
+            if window.contains(timestamp):
+                return window
+        return None
+
+
 class BuffTracker(BaseAnalyzer):
-    def __init__(self, buffs_to_track, starting_auras, spec):
+    def __init__(self, buffs_to_track, end_time, starting_auras, spec):
         self._buffs_to_track = buffs_to_track
-        self._active = {}  # preserves insertion order
-        self._has_flask = False
-        self._pots_used = 0
-        self._add_starting_auras(starting_auras)
         self._spec = spec
+        self._end_time = end_time
+        self._buff_windows = {}
+        self._add_starting_auras(starting_auras)
 
-    def _add(self, id, name, icon):
-        if name == "Flask of Endless Rage":
-            self._has_flask = True
-
-        # There's a bug where Speed is in starting auras but also
-        # an event after the fight starts
-        if name in ("Speed", "Indestructible") and name not in self._active:
-            self._pots_used += 1
-
-        self._active[name] = {
-            "abilityGameID": id,
-            "ability": name,
-            "ability_icon": icon,
-        }
-
-    def _remove(self, name):
-        if name == "Flask of Endless Rage":
-            self._has_flask = False
-
-        if name in self._active:
-            del self._active[name]
-
-    def __contains__(self, item):
-        return item in self._active
-
-    def get_buff_short_names(self):
-        return [
-            self._buffs_to_track[buff]
-            for buff in self._active
-            if buff in self._buffs_to_track
-        ]
-
-    def add_event(self, event):
-        if event["type"] == "applybuff":
-            self._add(event["abilityGameID"], event["ability"], event["ability_icon"])
-        if event["type"] == "removebuff":
-            self._remove(event["ability"])
-        event["buffs"] = list(
-            buff_data
-            for buff, buff_data in self._active.items()
-            if buff in self._buffs_to_track
+    def _get_buff_windows(self, buff_name, buff_id, icon):
+        return self._buff_windows.setdefault(
+            buff_name,
+            BuffWindows(buff_name, buff_id, icon),
         )
-        event["buff_short_names"] = self.get_buff_short_names()
+
+    def _num_windows(self, buff_name):
+        if buff_name not in self._buff_windows:
+            return 0
+        return self._buff_windows[buff_name].num_windows
+
+    def get_windows(self, buff_name):
+        if buff_name not in self._buff_windows:
+            return []
+
+        windows = self._buff_windows[buff_name].windows
+        if windows and windows[-1].end is None:
+            windows[-1] = Window(windows[-1].start, self._end_time)
+        return windows
+
+    @property
+    def has_flask(self):
+        return bool(self._num_windows("Flask of Endless Rage"))
+
+    @property
+    def num_pots(self):
+        return self._num_windows("Speed") + self._num_windows("Indestructible")
+
+    def preprocess_event(self, event):
+        if event["type"] not in (
+            "applybuff",
+            "removebuff",
+            "removebuffstack",
+            "refreshbuff",
+            "heal",
+        ):
+            return
+
+        windows = self._get_buff_windows(
+            event["ability"],
+            event["abilityGameID"],
+            event["ability_icon"],
+        )
+
+        if event["type"] in ("removebuffstack", "refreshbuff", "heal"):
+            # If we don't have a window, assume it was a starting aura
+            if not windows.has_window:
+                windows.add_window(0)
+        elif event["type"] == "applybuff":
+            if not windows.has_active_window:
+                windows.add_window(event["timestamp"])
+        elif event["type"] == "removebuff":
+            end = event["timestamp"]
+            if windows.has_active_window:
+                windows.active_window.end = end
+            elif not windows.has_window:  # assume it was a starting aura
+                windows.add_window(0, end)
 
     def _add_starting_auras(self, starting_auras):
         for aura in starting_auras:
             if "name" in aura:
-                self._add(aura["ability"], aura["name"], aura["ability_icon"])
-
-    def print(self):
-        red = "[red]x[/red]"
-        green = "[green]✓[/green]"
-
-        s = green if self._pots_used >= 2 else red
-        s += f" {self._pots_used} potions used"
-        console.print(s)
-
-        s = green if self._has_flask else red
-        s += " Had" if self._has_flask else " Missing"
-        s += " Flask of Endless Rage"
-        console.print(s)
+                windows = self._get_buff_windows(
+                    aura["name"],
+                    aura["ability"],
+                    aura["ability_icon"],
+                )
+                windows.add_window(0)
 
     def score(self):
         if self._spec == "Frost":
-            total_pots = max(2, self._pots_used)
-            pot_score = self._pots_used / total_pots * 0.5
-            flask_score = 0.5 if self._has_flask else 0
+            total_pots = max(2, self.num_pots)
+            pot_score = self.num_pots / total_pots * 0.5
+            flask_score = 0.5 if self.has_flask else 0
             return pot_score + flask_score
-        return int(self._has_flask)
+        return int(self.has_flask)
 
     def report(self):
         ret = {
             "flask_usage": {
-                "has_flask": self._has_flask,
+                "has_flask": self.has_flask,
             },
         }
         if self._spec == "Frost":
             ret["potion_usage"] = {
-                "potions_used": self._pots_used,
+                "potions_used": self.num_pots,
             }
         return ret
+
+    def is_active(self, buff, timestamp):
+        if buff not in self._buff_windows:
+            return False
+        return self._buff_windows[buff].contains(timestamp)
+
+    def get_active_buffs(self, timestamp):
+        windows = []
+
+        for buff, buff_windows in self._buff_windows.items():
+            if buff in self._buffs_to_track:
+                containing_window = buff_windows.containing_window(timestamp)
+
+                if containing_window:
+                    windows.append({
+                        "ability": buff,
+                        "ability_icon": buff_windows.icon,
+                        "abilityGameID": buff_windows.buff_id,
+                        "start": containing_window.start,
+                    })
+        return sorted(windows, key=lambda x: x["start"])
+
+    def decorate_event(self, event):
+        event["buffs"] = self.get_active_buffs(event["timestamp"])
 
 
 class RPAnalyzer(BaseAnalyzer):

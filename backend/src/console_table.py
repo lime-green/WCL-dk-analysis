@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from rich.console import Console
 from rich.table import Table
-from rich.style import Style
 
 # Don't print report to console if in lambda
 SHOULD_PRINT = os.environ.get("AWS_EXECUTION_ENV") is None
@@ -100,16 +99,6 @@ class EventsTable:
             rune_str += " -> "
         rune_str += self._format_rune_state(event["runes"])
 
-        buff_strs = []
-        for buff in event["buff_short_names"]:
-            if buff == "Rime" and event.get("consumes_rime"):
-                buff_strs.append(f"[blue]{buff}[/blue]")
-            elif buff == "KM" and event.get("consumes_km"):
-                buff_strs.append(f"[blue]{buff}[/blue]")
-            else:
-                buff_strs.append(buff)
-        buff_str = ", ".join(buff_strs)
-
         if event.get("is_miss"):
             notes.append(f"[red]{event['hit_type']}[/red]")
             ability = f"[red]{ability}[/red]"
@@ -119,21 +108,9 @@ class EventsTable:
 
         row = [time, ability, runic_power]
         row.append(rune_str)
-        row += [buff_str, ",".join(notes)]
+        row += [",".join(notes)]
 
-        style = (
-            Style(bgcolor="grey15")
-            if (
-                "UA" in event["buff_short_names"]
-                or event["ability"] == "Unbreakable Armor"
-            )
-            else None
-        )
-
-        self._table.add_row(
-            *row,
-            style=style,
-        )
+        self._table.add_row(*row)
 
     def print(self):
         console.print(self._table)

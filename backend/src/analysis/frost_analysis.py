@@ -291,8 +291,8 @@ class HowlingBlastAnalyzer(BaseAnalyzer):
 
 
 class RimeAnalyzer(BaseAnalyzer):
-    def __init__(self, buff_tracker):
-        self._num_total = 1 if "Rime" in buff_tracker else 0
+    def __init__(self, buff_tracker: BuffTracker):
+        self._num_total = 1 if buff_tracker.is_active("Rime", 0) else 0
         self._num_used = 0
 
     def add_event(self, event):

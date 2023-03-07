@@ -73,5 +73,10 @@ class Window:
 
         return Window(max(self.start, other.start), min(self.end, other.end))
 
+    def contains(self, timestamp):
+        if self.end is None:
+            return self.start <= timestamp
+        return self.start <= timestamp <= self.end
+
     def __repr__(self):
         return f"<Window start={self.start} end={self.end}>"
