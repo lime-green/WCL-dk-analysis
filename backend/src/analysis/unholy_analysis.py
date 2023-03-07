@@ -156,7 +156,6 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
 class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
     def __init__(self, duration, buff_tracker, start_time=0):
         super().__init__(duration, buff_tracker, "Unholy Presence", start_time)
-        self._last_ability_at = None
 
 
 class GargoyleWindow(Window):
