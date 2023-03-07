@@ -99,7 +99,7 @@ class Analyzer:
                     "Fury of the Five Flights",
                     "Desolation",
                 },
-                self._fight.end_time,
+                self._fight.duration,
                 starting_auras,
                 self._detect_spec(),
             )
