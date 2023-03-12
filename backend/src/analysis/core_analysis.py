@@ -36,8 +36,22 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             "Kel'Thuzad": self._check_kelthuzad,
             "Ignis the Furnace Master": self._check_ignis,
             "Razorscale": self._check_razorscale,
+            "Algalon the Observer": self._check_algalon,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
+
+    def _check_algalon(self, event):
+        if event["type"] not in ("applydebuff", "removedebuff"):
+            return
+
+        if event["ability"] != "Black Hole":
+            return
+
+        if event["type"] == "applydebuff":
+            self._last_event = event
+        elif event["type"] == "removedebuff":
+            dead_zone = self.DeadZone(self._last_event, event)
+            self._dead_zones.append(dead_zone)
 
     def _check_ignis(self, event):
         if event["type"] not in ("removedebuff", "applydebuff"):
