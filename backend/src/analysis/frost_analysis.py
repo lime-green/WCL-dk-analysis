@@ -360,7 +360,9 @@ class FrostAnalysisScorer(AnalysisScorer):
         raise_dead_score = ScoreWeight(
             raise_dead.score(), raise_dead.possible_raise_deads
         )
-        melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 2)
+        melee_score = ScoreWeight(
+            self.get_analyzer(MeleeUptimeAnalyzer).score() ** 1.5, 4
+        )
 
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)

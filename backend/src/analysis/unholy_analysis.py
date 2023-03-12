@@ -485,7 +485,9 @@ class UnholyAnalysisScorer(AnalysisScorer):
         bone_shield_score = ScoreWeight(
             self.get_analyzer(BoneShieldAnalyzer).score(), 1
         )
-        melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 3)
+        melee_score = ScoreWeight(
+            self.get_analyzer(MeleeUptimeAnalyzer).score() ** 1.5, 4
+        )
         rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
         blood_presence_score = ScoreWeight(
             self.get_analyzer(BloodPresenceUptimeAnalyzer).score(), 3

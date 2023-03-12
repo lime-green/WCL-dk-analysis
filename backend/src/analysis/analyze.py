@@ -192,7 +192,13 @@ class Analyzer:
                 or (
                     event["type"] in ("removedebuff", "applydebuff", "refreshdebuff")
                     and event["ability"]
-                    in ("Fungal Creep", "Web Spray", "Frost Blast", "Slag Pot", "Black Hole")
+                    in (
+                        "Fungal Creep",
+                        "Web Spray",
+                        "Frost Blast",
+                        "Slag Pot",
+                        "Black Hole",
+                    )
                 )
             ):
                 events.append(event)
