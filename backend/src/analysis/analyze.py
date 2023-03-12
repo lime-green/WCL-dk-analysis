@@ -49,10 +49,12 @@ class Analyzer:
     def _preprocess_events(self):
         dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
         buff_tracker = self._get_buff_tracker()
+        source_id = self._fight.source.id
 
         for event in self._events:
-            dead_zone_analyzer.preprocess_event(event)
-            buff_tracker.preprocess_event(event)
+            if event["sourceID"] == source_id or event["targetID"] == source_id:
+                dead_zone_analyzer.preprocess_event(event)
+                buff_tracker.preprocess_event(event)
 
         for event in self._events:
             dead_zone_analyzer.decorate_event(event)
