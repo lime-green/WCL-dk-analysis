@@ -111,12 +111,13 @@ class WCLClient:
             return in_cache
 
         try:
-            await self._query(rankings_query, "rankings", timeout=0.2)
-            self._cache.set("rankings_available", True, timedelta(minutes=5))
-            return True
+            await self._query(rankings_query, "rankings", timeout=0.4)
+            ret = True
         except asyncio.exceptions.TimeoutError:
-            self._cache.set("rankings_available", False, timedelta(minutes=5))
-            return False
+            ret = False
+
+        self._cache.set("rankings_available", ret, timedelta(minutes=30))
+        return ret
 
     async def _fetch_events(self, report_code, fight_id, source: Source):
         deaths = []
