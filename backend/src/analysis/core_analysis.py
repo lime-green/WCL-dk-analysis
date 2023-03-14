@@ -571,7 +571,9 @@ class BuffTracker(BaseAnalyzer):
                     aura["ability"],
                     aura["ability_icon"],
                 )
-                windows.add_window(0)
+                # Unholy presence can be there twice somehow
+                if not windows.has_window:
+                    windows.add_window(0)
 
     def score(self):
         if self._spec == "Frost":
