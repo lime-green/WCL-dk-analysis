@@ -1,6 +1,8 @@
-import aiohttp
 import logging
+from datetime import datetime, timedelta
 
+import aiohttp
+import asyncio.exceptions
 import sentry_sdk
 from report import Report, Source
 
@@ -13,10 +15,28 @@ class PrivateReport(WCLClientException):
     pass
 
 
+class CacheWithExpiry:
+    def __init__(self):
+        self._cache = {}
+
+    def get(self, key):
+        if key not in self._cache:
+            return None
+        value, expiry = self._cache[key]
+        if expiry < datetime.utcnow():
+            del self._cache[key]
+            return None
+        return value
+
+    def set(self, key, value, expiry):
+        self._cache[key] = (value, datetime.utcnow() + expiry)
+
+
 class WCLClient:
     base_url = "https://classic.warcraftlogs.com/api/v2/client"
     _auth = None
     _zones = None
+    _cache = CacheWithExpiry()
 
     def __init__(self, client_id, client_secret):
         self._client_id = client_id
@@ -70,12 +90,47 @@ class WCLClient:
         )
         return (await self._query(metadata_query, "metadata"))["data"]
 
+    async def _is_rankings_available(self, report_code):
+        rankings_query = (
+            """
+{
+    reportData {
+        report(code: "%s") {
+            rankings (
+                playerMetric: dps
+                fightIDs: []
+            )
+        }
+    }
+}
+"""
+            % report_code
+        )
+        in_cache = self._cache.get("rankings_available")
+        if in_cache is not None:
+            return in_cache
+
+        try:
+            await self._query(rankings_query, "rankings", timeout=0.2)
+            self._cache.set("rankings_available", True, timedelta(minutes=5))
+            return True
+        except asyncio.exceptions.TimeoutError:
+            self._cache.set("rankings_available", False, timedelta(minutes=5))
+            return False
+
     async def _fetch_events(self, report_code, fight_id, source: Source):
         deaths = []
         events = []
         combatant_info = []
         rankings = []
         next_page_timestamp = 0
+        rankings_query = """
+rankings(
+    playerMetric: dps
+    fightIDs: [%(fight_id)s]
+)
+""" % {"fight_id": fight_id}
+
         events_query_t = """
 {
   reportData {
@@ -102,10 +157,9 @@ class WCLClient:
       ) {
         data
       }
-      rankings(
-        playerMetric: dps
-        fightIDs: [%(fight_id)s]
-      )
+      
+      %(rankings_query)s
+      
       combatantInfo: events(
         startTime: 0
         endTime: 100000000000
@@ -120,6 +174,9 @@ class WCLClient:
   }
 }
 """
+        if not await self._is_rankings_available(report_code):
+            rankings_query = ""
+
         while next_page_timestamp is not None:
             events_query = events_query_t % dict(
                 report_code=report_code,
@@ -127,6 +184,7 @@ class WCLClient:
                 source_id=source.id,
                 source_name=source.name,
                 fight_id=fight_id,
+                rankings_query=rankings_query,
             )
             r = (await self._query(events_query, "events"))["data"]["reportData"][
                 "report"
@@ -134,7 +192,7 @@ class WCLClient:
 
             if next_page_timestamp == 0:
                 combatant_info = r["combatantInfo"]["data"]
-                if r["rankings"]:
+                if r.get("rankings"):
                     rankings = r["rankings"]["data"]
                 deaths = [
                     death for death in r["deaths"]["data"] if death["type"] == "death"
@@ -212,7 +270,7 @@ class WCLClient:
             report_metadata["endTime"],
         )
 
-    async def _query(self, query, description):
+    async def _query(self, query, description, timeout=3):
         session = await self.session()
         with sentry_sdk.start_span(op="http", description=description):
             r = await session.post(
@@ -220,6 +278,7 @@ class WCLClient:
                 json={"query": query},
                 headers=dict(Authorization=f"Bearer {self._auth}"),
                 raise_for_status=True,
+                timeout=timeout
             )
         json = await r.json()
 
