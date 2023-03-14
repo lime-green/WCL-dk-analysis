@@ -116,7 +116,7 @@ class WCLClient:
         except asyncio.exceptions.TimeoutError:
             ret = False
 
-        self._cache.set("rankings_available", ret, timedelta(minutes=30))
+        self._cache.set("rankings_available", ret, timedelta(minutes=60))
         return ret
 
     async def _fetch_events(self, report_code, fight_id, source: Source):
