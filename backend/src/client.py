@@ -270,7 +270,7 @@ rankings(
             report_metadata["endTime"],
         )
 
-    async def _query(self, query, description, timeout=3):
+    async def _query(self, query, description, timeout=2):
         session = await self.session()
         with sentry_sdk.start_span(op="http", description=description):
             r = await session.post(
