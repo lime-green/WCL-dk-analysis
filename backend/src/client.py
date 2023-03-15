@@ -111,7 +111,7 @@ class WCLClient:
             return in_cache
 
         try:
-            await self._query(rankings_query, "rankings", timeout=1)
+            await self._query(rankings_query, "rankings", timeout=2)
             ret = True
         except asyncio.exceptions.TimeoutError:
             logging.error("Timeout fetching rankings")
@@ -272,7 +272,7 @@ rankings(
             report_metadata["endTime"],
         )
 
-    async def _query(self, query, description, timeout=2):
+    async def _query(self, query, description, timeout=3):
         session = await self.session()
         with sentry_sdk.start_span(op="http", description=description):
             r = await session.post(
