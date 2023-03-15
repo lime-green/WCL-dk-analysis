@@ -388,9 +388,6 @@ class GhoulAnalyzer(BaseAnalyzer):
         if not self._is_ghoul(event):
             return
 
-        if event["type"] == "damage":
-            self.total_damage += event["amount"]
-
         # Ghoul was already alive
         if not self._windows:
             self._window = Window(0)
@@ -401,6 +398,8 @@ class GhoulAnalyzer(BaseAnalyzer):
                 self._num_claws += 1
             elif event["type"] == "cast" and event["ability"] == "Gnaw":
                 self._num_gnaws += 1
+            elif event["type"] == "damage":
+                self.total_damage += event["amount"]
         elif event["is_owner_pet_target"]:
             # Ghoul has died
             if event["type"] == "damage" and event.get("overkill"):
