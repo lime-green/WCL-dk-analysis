@@ -152,6 +152,7 @@ class Report:
             [event for event in self._events if fight["id"] == event["fight"]],
             fight_rankings,
             combatant_info,
+            fight["hardModeLevel"],
         )
 
     def get_actor_name(self, actor_id: int):
@@ -273,6 +274,7 @@ class Fight:
         events,
         rankings,
         combatant_info,
+        hard_mode_level,
     ):
         self._fight_id = fight_id
         self._report = report
@@ -284,6 +286,7 @@ class Fight:
         self.duration = self.end_time - self.start_time
         self._combatant_info_lookup = {c["sourceID"]: c for c in combatant_info}
         self.rankings = rankings
+        self._hard_mode_level = hard_mode_level
 
         self.events = [self._normalize_event(event) for event in events]
         self._fix_cotg()
@@ -297,6 +300,12 @@ class Fight:
     @property
     def source(self):
         return self._report.source
+
+    @property
+    def is_hard_mode(self):
+        if not self._hard_mode_level:
+            return False
+        return self._hard_mode_level > 0
 
     def get_combatant_info(self, source_id: int):
         # It's possible there's no combatant info sometimes (WCL bug?)

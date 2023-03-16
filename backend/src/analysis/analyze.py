@@ -47,7 +47,7 @@ class Analyzer:
         return None
 
     def _preprocess_events(self):
-        dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
+        dead_zone_analyzer = self._get_dead_zone_analyzer()
         buff_tracker = self._get_buff_tracker()
         source_id = self._fight.source.id
 
@@ -61,6 +61,11 @@ class Analyzer:
             buff_tracker.decorate_event(event)
 
         return dead_zone_analyzer
+
+    def _get_dead_zone_analyzer(self):
+        if not hasattr(self, "_dead_zone_analyzer"):
+            self._dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
+        return self._dead_zone_analyzer
 
     def _get_buff_tracker(self):
         if self._buff_tracker is None:
@@ -222,7 +227,11 @@ class Analyzer:
 
         buff_tracker = self._get_buff_tracker()
         analyzers = [runes, buff_tracker]
-        analyzers.extend(self._analysis_config.get_analyzers(self._fight, buff_tracker))
+        analyzers.extend(
+            self._analysis_config.get_analyzers(
+                self._fight, buff_tracker, self._get_dead_zone_analyzer()
+            )
+        )
         analyzers.append(self._analysis_config.get_scorer(analyzers))
 
         source_id = self._fight.source.id

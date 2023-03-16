@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import aiohttp
 import asyncio.exceptions
@@ -74,6 +74,7 @@ class WCLClient:
         }
       }
       fights {
+        hardModeLevel
         encounterID
         id
         startTime
@@ -127,7 +128,9 @@ rankings(
     playerMetric: dps
     fightIDs: [%(fight_id)s]
 )
-""" % {"fight_id": fight_id}
+""" % {
+            "fight_id": fight_id
+        }
 
         events_query_t = """
 {
@@ -155,9 +158,9 @@ rankings(
       ) {
         data
       }
-      
+
       %(rankings_query)s
-      
+
       combatantInfo: events(
         startTime: 0
         endTime: 100000000000
@@ -276,7 +279,7 @@ rankings(
                 json={"query": query},
                 headers=dict(Authorization=f"Bearer {self._auth}"),
                 raise_for_status=True,
-                timeout=timeout
+                timeout=timeout,
             )
         json = await r.json()
 

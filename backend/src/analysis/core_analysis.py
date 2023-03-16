@@ -1,6 +1,12 @@
 from typing import Optional
 
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight, Window
+from analysis.base import (
+    AnalysisScorer,
+    BaseAnalyzer,
+    ScoreWeight,
+    Window,
+    calculate_uptime,
+)
 from console_table import console
 from report import Fight
 
@@ -15,12 +21,9 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         "Pestilence",
     }
 
-    class DeadZone:
-        def __init__(self, last_event, curr_event):
-            self._last_event = last_event
-            self._curr_event = curr_event
-            self.start = last_event["timestamp"] + 1
-            self.end = curr_event["timestamp"]
+    class DeadZone(Window):
+        def __init__(self, last_timestamp, curr_timestamp):
+            super().__init__(last_timestamp + 1, curr_timestamp)
 
         def __contains__(self, item):
             return self.start <= item <= self.end
@@ -37,8 +40,33 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             "Ignis the Furnace Master": self._check_ignis,
             "Razorscale": self._check_razorscale,
             "Algalon the Observer": self._check_algalon,
+            "General Vezax": self._check_vezax,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
+        self._is_hard_mode = self._fight.is_hard_mode
+
+    def _check_vezax(self, event):
+        if not self._is_hard_mode:
+            return
+
+        if (
+            not self._last_event
+            and event["type"] == "damage"
+            and event["target"] == "General Vezax"
+            and "hitPoints" in event
+            and event["hitPoints"] / event["maxHitPoints"] <= 0.05
+        ):
+            self._last_event = event
+        if (
+            (
+                event.get("source") == "Saronite Animus"
+                or event.get("target") == "Saronite Animus"
+            )
+            and self._last_event
+            and not self._dead_zones
+        ):
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
+            self._dead_zones.append(dead_zone)
 
     def _check_algalon(self, event):
         if event["type"] not in ("applydebuff", "removedebuff"):
@@ -50,7 +78,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event["type"] == "applydebuff":
             self._last_event = event
         elif event["type"] == "removedebuff":
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
     def _check_ignis(self, event):
@@ -63,7 +91,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event["type"] == "applydebuff":
             self._last_event = event
         elif event["type"] == "removedebuff":
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
     def _check_kelthuzad(self, event):
@@ -76,7 +104,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event["type"] == "applydebuff":
             self._last_event = event
         elif event["type"] == "removedebuff":
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
     def _check_maexxna(self, event):
@@ -89,7 +117,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event["type"] == "applydebuff":
             self._last_event = event
         elif event["type"] == "removedebuff":
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
     def _check_thaddius(self, event):
@@ -103,7 +131,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             return
 
         if self._last_event and self._last_event["target"] != event["target"]:
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
         self._last_event = event
@@ -126,7 +154,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             self._last_event
             and event["timestamp"] - self._last_event["timestamp"] > 5000
         ):
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
         self._last_event = event
@@ -145,7 +173,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             self._last_event
             and event["timestamp"] - self._last_event["timestamp"] > 2000
         ):
-            dead_zone = self.DeadZone(self._last_event, event)
+            dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
 
         self._last_event = event
@@ -162,6 +190,9 @@ class DeadZoneAnalyzer(BaseAnalyzer):
             if dead_zone.start <= end:
                 return dead_zone
         return None
+
+    def get_dead_zones(self):
+        return [Window(window.start, window.end) for window in self._dead_zones]
 
     def decorate_event(self, event):
         dead_zone = self.get_recent_dead_zone(event["timestamp"])
@@ -922,13 +953,16 @@ class CoreAbilities(BaseAnalyzer):
 
 
 class MeleeUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, max_swing_speed=2500, event_predicate=None):
+    def __init__(
+        self, fight_duration, ignore_windows, max_swing_speed=2500, event_predicate=None
+    ):
         self._fight_duration = fight_duration
         self._windows = []
         self._window = None
         self._last_swing_at = None
         self._max_swing_speed = max_swing_speed
         self._event_predicate = event_predicate
+        self._ignore_windows = ignore_windows
 
     def predicate(self, event):
         if self._event_predicate is None:
@@ -954,7 +988,12 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
         if self._windows and self._windows[-1].end is None:
             self._windows[-1].end = self._fight_duration
 
-        return sum(window.duration for window in self._windows) / self._fight_duration
+        ret = calculate_uptime(
+            self._windows,
+            self._ignore_windows,
+            self._fight_duration,
+        )
+        return ret
 
     def score(self):
         return self.uptime()
@@ -997,14 +1036,14 @@ class CoreAnalysisConfig:
     show_procs = False
     show_speed = False
 
-    def get_analyzers(self, fight: Fight, buff_tracker_):
+    def get_analyzers(self, fight: Fight, buff_tracker_, dead_zone_analyzer):
         return [
             GCDAnalyzer(),
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
             HyperspeedAnalyzer(fight.duration),
-            MeleeUptimeAnalyzer(fight.duration),
+            MeleeUptimeAnalyzer(fight.duration, dead_zone_analyzer.get_dead_zones()),
         ]
 
     def get_scorer(self, analyzers):

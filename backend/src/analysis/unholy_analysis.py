@@ -4,6 +4,8 @@ from analysis.base import (
     AnalysisScorer,
     BaseAnalyzer,
     ScoreWeight,
+    calculate_uptime,
+    combine_windows,
     range_overlap,
     Window,
 )
@@ -23,6 +25,7 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         self,
         end_time,
         buff_tracker: BuffTracker,
+        ignore_windows,
         buff_names,
         start_time=0,
         max_duration=None,
@@ -31,6 +34,7 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         self._end_time = end_time
         self._max_duration = max_duration
         self._buff_tracker = buff_tracker
+        self._ignore_windows = ignore_windows
 
         if isinstance(buff_names, set):
             self._buff_names = buff_names
@@ -45,34 +49,46 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
     def set_start_time(self, start_time):
         self._start_time = start_time
 
-    def uptime(self):
-        uptime_duration = 0
-        windows = self._get_windows()
+    def _clamp_windows(self, windows):
+        clamped_windows = []
 
-        for window in windows:
-            # If the window is entirely outside the range, ignore it
-            if range_overlap(
+        for i, window in enumerate(windows):
+            if not range_overlap(
                 (window.start, window.end), (self._start_time, self._end_time)
             ):
-                uptime_duration += min(window.end, self._end_time) - max(
-                    window.start, self._start_time
-                )
+                continue
+
+            clamped_window = Window(window.start, window.end)
+            if window.end > self._end_time:
+                clamped_window.end = self._end_time
+            if window.start < self._start_time:
+                clamped_window.start = self._start_time
+            clamped_windows.append(clamped_window)
+
+        return clamped_windows
+
+    def uptime(self):
+        windows = list(self._get_windows())
+        windows = self._clamp_windows(windows)
+        ignore_windows = self._clamp_windows(self._ignore_windows)
 
         total_duration = self._end_time - self._start_time
         if self._max_duration:
             total_duration = min(total_duration, self._max_duration)
-        return min(1, uptime_duration / total_duration)
+
+        return min(1, calculate_uptime(windows, ignore_windows, total_duration))
 
     def score(self):
         return self.uptime()
 
 
 class DebuffUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, end_time, debuff_name):
+    def __init__(self, end_time, debuff_name, ignore_windows):
         self._windows = []
         self._window = None
         self._debuff_name = debuff_name
         self._end_time = end_time
+        self._ignore_windows = ignore_windows
 
     def _add_window(self, start, end=None):
         self._window = Window(start, end)
@@ -93,23 +109,22 @@ class DebuffUptimeAnalyzer(BaseAnalyzer):
             self._window.end = end
 
     def uptime(self):
-        uptime_duration = 0
-
         if self._windows and self._windows[-1].end is None:
             self._windows[-1].end = self._end_time
 
-        for window in self._windows:
-            uptime_duration += window.end - window.start
-
-        return uptime_duration / self._end_time
+        return calculate_uptime(
+            self._windows,
+            self._ignore_windows,
+            self._end_time,
+        )
 
     def score(self):
         return self.uptime()
 
 
 class BloodPlagueAnalyzer(DebuffUptimeAnalyzer):
-    def __init__(self, end_time):
-        super().__init__(end_time, "Blood Plague")
+    def __init__(self, end_time, ignore_windows):
+        super().__init__(end_time, "Blood Plague", ignore_windows)
 
     def report(self):
         return {
@@ -118,8 +133,8 @@ class BloodPlagueAnalyzer(DebuffUptimeAnalyzer):
 
 
 class FrostFeverAnalyzer(DebuffUptimeAnalyzer):
-    def __init__(self, end_time):
-        super().__init__(end_time, "Frost Fever")
+    def __init__(self, end_time, ignore_windows):
+        super().__init__(end_time, "Frost Fever", ignore_windows)
 
     def report(self):
         return {
@@ -128,16 +143,16 @@ class FrostFeverAnalyzer(DebuffUptimeAnalyzer):
 
 
 class BoneShieldAnalyzer(BuffUptimeAnalyzer):
-    def __init__(self, duration, buff_tracker):
-        super().__init__(duration, buff_tracker, "Bone Shield")
+    def __init__(self, duration, buff_tracker, ignore_windows):
+        super().__init__(duration, buff_tracker, ignore_windows, "Bone Shield")
 
     def report(self):
         return {"bone_shield_uptime": self.uptime()}
 
 
 class DesolationAnalyzer(BuffUptimeAnalyzer):
-    def __init__(self, duration, buff_tracker):
-        super().__init__(duration, buff_tracker, "Desolation")
+    def __init__(self, duration, buff_tracker, ignore_windows):
+        super().__init__(duration, buff_tracker, ignore_windows, "Desolation")
 
     def report(self):
         return {"desolation_uptime": self.uptime()}
@@ -146,37 +161,50 @@ class DesolationAnalyzer(BuffUptimeAnalyzer):
 class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, duration, buff_tracker):
-        super().__init__(duration, buff_tracker, "Ghoul Frenzy")
+    def __init__(self, duration, buff_tracker, ignore_windows):
+        super().__init__(duration, buff_tracker, ignore_windows, "Ghoul Frenzy")
 
     def report(self):
         return {"ghoul_frenzy_uptime": self.uptime()}
 
 
 class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
-    def __init__(self, duration, buff_tracker, start_time=0):
-        super().__init__(duration, buff_tracker, "Unholy Presence", start_time)
+    def __init__(self, duration, buff_tracker, ignore_windows, start_time=0):
+        super().__init__(
+            duration, buff_tracker, ignore_windows, "Unholy Presence", start_time
+        )
 
 
 class GargoyleWindow(Window):
-    def __init__(self, start, fight_duration, buff_tracker: BuffTracker):
+    def __init__(
+        self, start, fight_duration, buff_tracker: BuffTracker, ignore_windows
+    ):
         self.start = start
         self.end = min(start + 30000, fight_duration)
         self._gargoyle_first_cast = None
         self.snapshotted_greatness = buff_tracker.is_active("Greatness", start)
         self.snapshotted_fc = buff_tracker.is_active("Unholy Strength", start)
         self._up_uptime = UnholyPresenceUptimeAnalyzer(
-            self.end, buff_tracker, self.start
+            self.end,
+            buff_tracker,
+            ignore_windows,
+            self.start,
         )
         self._bl_uptime = BuffUptimeAnalyzer(
-            self.end, buff_tracker, {"Bloodlust", "Heroism"}, self.start
+            self.end, buff_tracker, ignore_windows, {"Bloodlust", "Heroism"}, self.start
         )
         self._speed_uptime = BuffUptimeAnalyzer(
-            self.end, buff_tracker, "Speed", self.start, max_duration=15000 - 25
+            self.end,
+            buff_tracker,
+            ignore_windows,
+            "Speed",
+            self.start,
+            max_duration=15000 - 25,
         )
         self._hyperspeed_uptime = BuffUptimeAnalyzer(
             self.end,
             buff_tracker,
+            ignore_windows,
             "Hyperspeed Acceleration",
             self.start,
             max_duration=12000 - 25,
@@ -246,16 +274,20 @@ class GargoyleWindow(Window):
 class GargoyleAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, fight_duration, buff_tracker):
+    def __init__(self, fight_duration, buff_tracker, ignore_windows):
         self.windows: List[GargoyleWindow] = []
         self._window = None
         self._buff_tracker = buff_tracker
         self._fight_duration = fight_duration
+        self._ignore_windows = ignore_windows
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
             self._window = GargoyleWindow(
-                event["timestamp"], self._fight_duration, self._buff_tracker
+                event["timestamp"],
+                self._fight_duration,
+                self._buff_tracker,
+                self._ignore_windows,
             )
             self.windows.append(self._window)
 
@@ -316,10 +348,11 @@ class GargoyleAnalyzer(BaseAnalyzer):
 
 
 class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration):
+    def __init__(self, fight_duration, ignore_windows):
         self._dnd_ticks = 0
         self._last_tick_time = None
-        self._max_ticks = fight_duration * 11 / 15 // 1000
+        self._fight_duration = fight_duration
+        self._ignore_windows = ignore_windows
 
     def add_event(self, event):
         if event["type"] == "damage" and event["ability"] == "Death and Decay":
@@ -331,7 +364,13 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
                 self._last_tick_time = event["timestamp"]
 
     def uptime(self):
-        return min(1, self._dnd_ticks / self._max_ticks)
+        fight_duration = self._fight_duration
+
+        for window in self._ignore_windows:
+            fight_duration -= window.duration
+
+        max_ticks = fight_duration * 11 / 15 // 1000
+        return min(1, self._dnd_ticks / max_ticks)
 
     def score(self):
         return self.uptime()
@@ -341,8 +380,6 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
             "dnd": {
                 "uptime": self.uptime(),
                 "score": self.score(),
-                "ticks": self._dnd_ticks,
-                "max_ticks": self._max_ticks,
             }
         }
 
@@ -350,12 +387,14 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
 class GhoulAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, fight_duration):
+    def __init__(self, fight_duration, ignore_windows):
         self._fight_duration = fight_duration
         self._num_claws = 0
         self._num_gnaws = 0
         self._melee_uptime = MeleeUptimeAnalyzer(
-            fight_duration, event_predicate=self._is_ghoul
+            fight_duration,
+            ignore_windows,
+            event_predicate=self._is_ghoul,
         )
         self._windows = []
         self._window = None
@@ -442,24 +481,23 @@ class GhoulAnalyzer(BaseAnalyzer):
 
 
 class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, buff_tracker: BuffTracker, ignore_windows):
+    def __init__(
+        self,
+        fight_duration,
+        buff_tracker: BuffTracker,
+        ignore_windows,
+        gargoyle_windows,
+    ):
         self._buff_tracker = buff_tracker
         self._ignore_windows = ignore_windows
+        # Gargoyle windows are modified throughout the fight
+        self._gargoyle_windows = gargoyle_windows
         self._fight_duration = fight_duration
 
     def uptime(self):
         windows = self._buff_tracker.get_windows("Blood Presence")
-        total_uptime = sum(window.duration for window in windows)
-
-        for window in windows:
-            for ignore_window in self._ignore_windows:
-                if window.intersects(ignore_window):
-                    total_uptime -= window.intersection(ignore_window).duration
-
-        total_duration_without_ignores = self._fight_duration - sum(
-            window.duration for window in self._ignore_windows
-        )
-        return total_uptime / total_duration_without_ignores
+        ignore_windows = combine_windows(self._ignore_windows, self._gargoyle_windows)
+        return calculate_uptime(windows, ignore_windows, self._fight_duration)
 
     def score(self):
         return self.uptime()
@@ -472,33 +510,44 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
 
 class UnholyAnalysisScorer(AnalysisScorer):
     def score(self):
+        factor = 1.5
+
         # Rotation
         gargoyle_analyzer = self.get_analyzer(GargoyleAnalyzer)
-        bp_score = ScoreWeight(self.get_analyzer(BloodPlagueAnalyzer).score(), 3)
-        ff_score = ScoreWeight(self.get_analyzer(BloodPlagueAnalyzer).score(), 3)
-        gf_score = ScoreWeight(self.get_analyzer(GhoulFrenzyAnalyzer).score(), 3)
-        desolation_score = ScoreWeight(self.get_analyzer(DesolationAnalyzer).score(), 3)
+        bp_score = ScoreWeight(
+            self.get_analyzer(BloodPlagueAnalyzer).score() ** factor, 3
+        )
+        ff_score = ScoreWeight(
+            self.get_analyzer(BloodPlagueAnalyzer).score() ** factor, 3
+        )
+        gf_score = ScoreWeight(
+            self.get_analyzer(GhoulFrenzyAnalyzer).score() ** factor, 3
+        )
+        desolation_score = ScoreWeight(
+            self.get_analyzer(DesolationAnalyzer).score() ** factor, 3
+        )
         dnd_score = ScoreWeight(
-            self.get_analyzer(DeathAndDecayUptimeAnalyzer).score(), 6
+            self.get_analyzer(DeathAndDecayUptimeAnalyzer).score() ** factor, 6
         )
         bone_shield_score = ScoreWeight(
-            self.get_analyzer(BoneShieldAnalyzer).score(), 1
+            self.get_analyzer(BoneShieldAnalyzer).score() ** factor, 1
         )
         melee_score = ScoreWeight(
-            self.get_analyzer(MeleeUptimeAnalyzer).score() ** 1.5, 4
+            self.get_analyzer(MeleeUptimeAnalyzer).score() ** factor, 4
         )
         rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
         blood_presence_score = ScoreWeight(
-            self.get_analyzer(BloodPresenceUptimeAnalyzer).score(), 3
+            self.get_analyzer(BloodPresenceUptimeAnalyzer).score() ** factor, 3
         )
 
         # Gargoyle
         gargoyle_score = ScoreWeight(
-            gargoyle_analyzer.score(), 5 * gargoyle_analyzer.possible_gargoyles
+            gargoyle_analyzer.score() ** factor,
+            5 * gargoyle_analyzer.possible_gargoyles,
         )
 
         # Ghoul
-        ghoul_score = ScoreWeight(self.get_analyzer(GhoulAnalyzer).score(), 5)
+        ghoul_score = ScoreWeight(self.get_analyzer(GhoulAnalyzer).score() ** factor, 5)
 
         # Misc
         consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
@@ -531,20 +580,22 @@ class UnholyAnalysisScorer(AnalysisScorer):
 
 
 class UnholyAnalysisConfig(CoreAnalysisConfig):
-    def get_analyzers(self, fight: Fight, buff_tracker):
-        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker)
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer):
+        dead_zones = dead_zone_analyzer.get_dead_zones()
+        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones)
 
-        return super().get_analyzers(fight, buff_tracker) + [
-            BoneShieldAnalyzer(fight.duration, buff_tracker),
-            DesolationAnalyzer(fight.duration, buff_tracker),
-            GhoulFrenzyAnalyzer(fight.duration, buff_tracker),
+        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer) + [
+            BoneShieldAnalyzer(fight.duration, buff_tracker, dead_zones),
+            DesolationAnalyzer(fight.duration, buff_tracker, dead_zones),
+            GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones),
             gargoyle,
-            BloodPlagueAnalyzer(fight.duration),
-            FrostFeverAnalyzer(fight.duration),
-            DeathAndDecayUptimeAnalyzer(fight.duration),
-            MeleeUptimeAnalyzer(fight.duration),
-            GhoulAnalyzer(fight.duration),
-            BloodPresenceUptimeAnalyzer(fight.duration, buff_tracker, gargoyle.windows),
+            BloodPlagueAnalyzer(fight.duration, dead_zones),
+            FrostFeverAnalyzer(fight.duration, dead_zones),
+            DeathAndDecayUptimeAnalyzer(fight.duration, dead_zones),
+            GhoulAnalyzer(fight.duration, dead_zones),
+            BloodPresenceUptimeAnalyzer(
+                fight.duration, buff_tracker, dead_zones, gargoyle.windows
+            ),
         ]
 
     def get_scorer(self, analyzers):

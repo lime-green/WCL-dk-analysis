@@ -80,3 +80,37 @@ class Window:
 
     def __repr__(self):
         return f"<Window start={self.start} end={self.end}>"
+
+
+def calculate_uptime(windows, ignore_windows, total_duration):
+    total_uptime = sum(window.duration for window in windows)
+
+    for window in windows:
+        for ignore_window in ignore_windows:
+            if window.intersects(ignore_window):
+                total_uptime -= window.intersection(ignore_window).duration
+
+    total_duration_without_ignores = total_duration - sum(
+        window.duration for window in ignore_windows
+    )
+    return total_uptime / total_duration_without_ignores
+
+
+def combine_windows(*windows_list):
+    windows = [window for windows in windows_list for window in windows]
+
+    if not windows:
+        return []
+
+    windows = sorted(windows, key=lambda window: window.start)
+
+    combined_windows = [windows[0]]
+    for window in windows[1:]:
+        if window.start <= combined_windows[-1].end:
+            combined_windows[-1] = Window(
+                window.start, max(combined_windows[-1].end, window.end)
+            )
+        else:
+            combined_windows.append(window)
+
+    return combined_windows
