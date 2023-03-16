@@ -109,7 +109,7 @@ class WCLClient:
         )
 
         try:
-            await self._query(rankings_query, "rankings", timeout=1)
+            await self._query(rankings_query, "rankings", timeout=0.6)
             ret = True
         except asyncio.exceptions.TimeoutError:
             logging.error("Timeout fetching rankings")
