@@ -399,6 +399,7 @@ class GhoulAnalyzer(BaseAnalyzer):
         self._windows = []
         self._window = None
         self.total_damage = 0
+        self._ignore_windows = ignore_windows
 
     def _is_ghoul(self, event):
         if not event["is_owner_pet_source"] and not event["is_owner_pet_target"]:
@@ -452,7 +453,11 @@ class GhoulAnalyzer(BaseAnalyzer):
         if self._windows and self._windows[-1].end is None:
             self._windows[-1].end = self._fight_duration
 
-        return sum(window.duration for window in self._windows) / self._fight_duration
+        return calculate_uptime(
+            self._windows,
+            self._ignore_windows,
+            self._fight_duration,
+        )
 
     def score(self):
         return ScoreWeight.calculate(
