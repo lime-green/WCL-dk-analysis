@@ -3,7 +3,6 @@ from typing import Optional
 from analysis.base import (
     AnalysisScorer,
     BaseAnalyzer,
-    ScoreWeight,
     Window,
     calculate_uptime,
 )
@@ -1005,29 +1004,29 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
 
 
 class CoreAnalysisScorer(AnalysisScorer):
+    def get_score_weights(self):
+        return {
+            GCDAnalyzer: {
+                "weight": 3,
+            },
+            BuffTracker: {
+                "weight": 1,
+            },
+            BombAnalyzer: {
+                "weight": 2,
+            },
+            HyperspeedAnalyzer: {
+                "weight": 2,
+            },
+            MeleeUptimeAnalyzer: {
+                "weight": 5,
+            },
+        }
+
     def report(self):
-        # Speed
-        gcd_score = ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
-        drift_score = ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
-
-        # Misc
-        consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
-        bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
-        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
-        melee_score = ScoreWeight(self.get_analyzer(MeleeUptimeAnalyzer).score(), 2)
-
-        total_score = ScoreWeight.calculate(
-            gcd_score,
-            drift_score,
-            consume_score,
-            bomb_score,
-            hyperspeed_score,
-            melee_score,
-        )
-
         return {
             "analysis_scores": {
-                "total_score": total_score,
+                "total_score": self.score(),
             }
         }
 

@@ -1,4 +1,4 @@
-from analysis.base import AnalysisScorer, BaseAnalyzer, ScoreWeight
+from analysis.base import AnalysisScorer, BaseAnalyzer
 from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
@@ -344,49 +344,51 @@ class RaiseDeadAnalyzer(BaseAnalyzer):
 
 
 class FrostAnalysisScorer(AnalysisScorer):
+    def get_score_weights(self):
+        return {
+            GCDAnalyzer: {
+                "weight": 3,
+            },
+            RuneTracker: {
+                "weight": 3,
+            },
+            KMAnalyzer: {
+                "weight": 1,
+            },
+            UAAnalyzer: {
+                "weight": lambda ua: ua.num_possible,
+            },
+            DiseaseAnalyzer: {
+                "weight": 2,
+            },
+            HowlingBlastAnalyzer: {
+                "weight": 0.5,
+            },
+            RimeAnalyzer: {
+                "weight": 0.5,
+            },
+            RaiseDeadAnalyzer: {
+                "weight": lambda rd: rd.possible_raise_deads,
+            },
+            MeleeUptimeAnalyzer: {
+                "weight": 4,
+                "exponent_factor": 1.5,
+            },
+            BuffTracker: {
+                "weight": 1,
+            },
+            BombAnalyzer: {
+                "weight": 2,
+            },
+            HyperspeedAnalyzer: {
+                "weight": 1,
+            },
+        }
+
     def report(self):
-        # Speed
-        gcd_score = ScoreWeight(self.get_analyzer(GCDAnalyzer).score(), 3)
-        drift_score = ScoreWeight(self.get_analyzer(RuneTracker).score(), 3)
-        km_score = ScoreWeight(self.get_analyzer(KMAnalyzer).score(), 1)
-
-        # Rotation
-        ua_analyzer = self.get_analyzer(UAAnalyzer)
-        ua_score = ScoreWeight(ua_analyzer.score(), ua_analyzer.num_possible)
-        disease_score = ScoreWeight(self.get_analyzer(DiseaseAnalyzer).score(), 2)
-        hb_score = ScoreWeight(self.get_analyzer(HowlingBlastAnalyzer).score(), 0.5)
-        rime_score = ScoreWeight(self.get_analyzer(RimeAnalyzer).score(), 0.5)
-        raise_dead = self.get_analyzer(RaiseDeadAnalyzer)
-        raise_dead_score = ScoreWeight(
-            raise_dead.score(), raise_dead.possible_raise_deads
-        )
-        melee_score = ScoreWeight(
-            self.get_analyzer(MeleeUptimeAnalyzer).score() ** 1.5, 4
-        )
-
-        # Misc
-        consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
-        bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 2)
-        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
-
-        total_score = ScoreWeight.calculate(
-            gcd_score,
-            drift_score,
-            km_score,
-            ua_score,
-            disease_score,
-            hb_score,
-            rime_score,
-            consume_score,
-            raise_dead_score,
-            bomb_score,
-            hyperspeed_score,
-            melee_score,
-        )
-
         return {
             "analysis_scores": {
-                "total_score": total_score,
+                "total_score": self.score(),
             }
         }
 

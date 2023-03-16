@@ -514,67 +514,63 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
 
 
 class UnholyAnalysisScorer(AnalysisScorer):
-    def score(self):
-        factor = 1.5
+    def get_score_weights(self):
+        exponent_factor = 1.5
 
-        # Rotation
-        gargoyle_analyzer = self.get_analyzer(GargoyleAnalyzer)
-        bp_score = ScoreWeight(
-            self.get_analyzer(BloodPlagueAnalyzer).score() ** factor, 3
-        )
-        ff_score = ScoreWeight(
-            self.get_analyzer(BloodPlagueAnalyzer).score() ** factor, 3
-        )
-        gf_score = ScoreWeight(
-            self.get_analyzer(GhoulFrenzyAnalyzer).score() ** factor, 3
-        )
-        desolation_score = ScoreWeight(
-            self.get_analyzer(DesolationAnalyzer).score() ** factor, 3
-        )
-        dnd_score = ScoreWeight(
-            self.get_analyzer(DeathAndDecayUptimeAnalyzer).score() ** factor, 6
-        )
-        bone_shield_score = ScoreWeight(
-            self.get_analyzer(BoneShieldAnalyzer).score() ** factor, 1
-        )
-        melee_score = ScoreWeight(
-            self.get_analyzer(MeleeUptimeAnalyzer).score() ** factor, 4
-        )
-        rp_score = ScoreWeight(self.get_analyzer(RPAnalyzer).score(), 1)
-        blood_presence_score = ScoreWeight(
-            self.get_analyzer(BloodPresenceUptimeAnalyzer).score() ** factor, 3
-        )
-
-        # Gargoyle
-        gargoyle_score = ScoreWeight(
-            gargoyle_analyzer.score() ** factor,
-            5 * gargoyle_analyzer.possible_gargoyles,
-        )
-
-        # Ghoul
-        ghoul_score = ScoreWeight(self.get_analyzer(GhoulAnalyzer).score() ** factor, 5)
-
-        # Misc
-        consume_score = ScoreWeight(self.get_analyzer(BuffTracker).score(), 1)
-        bomb_score = ScoreWeight(self.get_analyzer(BombAnalyzer).score(), 1)
-        hyperspeed_score = ScoreWeight(self.get_analyzer(HyperspeedAnalyzer).score(), 1)
-
-        return ScoreWeight.calculate(
-            consume_score,
-            bomb_score,
-            gargoyle_score,
-            bp_score,
-            ff_score,
-            gf_score,
-            desolation_score,
-            dnd_score,
-            bone_shield_score,
-            melee_score,
-            rp_score,
-            hyperspeed_score,
-            ghoul_score,
-            blood_presence_score,
-        )
+        return {
+            GargoyleAnalyzer: {
+                "weight": lambda ga: 5 * ga.possible_gargoyles,
+                "exponent_factor": exponent_factor,
+            },
+            BloodPlagueAnalyzer: {
+                "weight": 3,
+                "exponent_factor": exponent_factor,
+            },
+            FrostFeverAnalyzer: {
+                "weight": 3,
+                "exponent_factor": exponent_factor,
+            },
+            GhoulFrenzyAnalyzer: {
+                "weight": 3,
+                "exponent_factor": exponent_factor,
+            },
+            DesolationAnalyzer: {
+                "weight": 3,
+                "exponent_factor": exponent_factor,
+            },
+            DeathAndDecayUptimeAnalyzer: {
+                "weight": 6,
+                "exponent_factor": exponent_factor,
+            },
+            BoneShieldAnalyzer: {
+                "weight": 1,
+                "exponent_factor": exponent_factor,
+            },
+            MeleeUptimeAnalyzer: {
+                "weight": 6,
+                "exponent_factor": exponent_factor,
+            },
+            RPAnalyzer: {
+                "weight": 1,
+            },
+            BloodPresenceUptimeAnalyzer: {
+                "weight": 3,
+                "exponent_factor": exponent_factor,
+            },
+            GhoulAnalyzer: {
+                "weight": 5,
+                "exponent_factor": exponent_factor,
+            },
+            BuffTracker: {
+                "weight": 1,
+            },
+            BombAnalyzer: {
+                "weight": 1,
+            },
+            HyperspeedAnalyzer: {
+                "weight": 2,
+            },
+        }
 
     def report(self):
         return {

@@ -42,6 +42,28 @@ class AnalysisScorer(BaseAnalyzer):
     def get_analyzer(self, cls: Type[R]) -> R:
         return self._analyzers[cls]
 
+    def get_score_weights(self):
+        return {}
+
+    def score(self):
+        return self.score_weights_from_dict(self.get_score_weights())
+
+    def score_weights_from_dict(self, score_weights_dict):
+        score_weights = []
+
+        for analyzer_cls, score_weight_dict in score_weights_dict.items():
+            analyzer = self.get_analyzer(analyzer_cls)
+            exponent_factor = score_weight_dict.get("exponent_factor", 1)
+            score = analyzer.score() ** exponent_factor
+
+            weight = score_weight_dict["weight"]
+            if callable(weight):
+                weight = weight(analyzer)
+
+            score_weights.append(ScoreWeight(score, weight))
+
+        return ScoreWeight.calculate(*score_weights)
+
     def report(self):
         return {
             "analysis_scores": {
