@@ -139,11 +139,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
         if event.get("target") != "Razorscale":
             return
 
-        if event["type"] != "cast" or event["ability"] not in (
-            *self.MELEE_ABILITIES,
-            "Icy Touch",
-            "Death Coil",
-        ):
+        if event["type"] != "cast":
             return
 
         if event["source"] != self._fight.source.name:
@@ -151,7 +147,7 @@ class DeadZoneAnalyzer(BaseAnalyzer):
 
         if (
             self._last_event
-            and event["timestamp"] - self._last_event["timestamp"] > 5000
+            and event["timestamp"] - self._last_event["timestamp"] > 10000
         ):
             dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)
@@ -971,7 +967,7 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if self._window and self._window.end is None:
             if event["timestamp"] - self._last_swing_at >= self._max_swing_speed:
-                self._window.end = self._last_swing_at
+                self._window.end = min(self._last_swing_at + self._max_swing_speed / 2, self._fight_duration)
 
         if (
             self.predicate(event)
@@ -987,12 +983,11 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
         if self._windows and self._windows[-1].end is None:
             self._windows[-1].end = self._fight_duration
 
-        ret = calculate_uptime(
+        return calculate_uptime(
             self._windows,
             self._ignore_windows,
             self._fight_duration,
         )
-        return ret
 
     def score(self):
         return self.uptime()
