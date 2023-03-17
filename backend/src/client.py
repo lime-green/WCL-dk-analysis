@@ -95,7 +95,6 @@ class WCLClient:
         deaths = []
         events = []
         combatant_info = []
-        rankings = []
         next_page_timestamp = 0
         rankings_query = """
 {
@@ -110,7 +109,7 @@ class WCLClient:
 }
 """ % {
             "report_code": report_code,
-            "fight_id": fight_id
+            "fight_id": fight_id,
         }
 
         events_query_t = """
@@ -178,14 +177,21 @@ class WCLClient:
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
 
+        rankings = []
+
         try:
-            rankings = (await rankings_task)["data"]["reportData"]["report"]["rankings"]["data"]
+            rankings_result = await rankings_task
         except asyncio.exceptions.TimeoutError:
             logging.error("Timeout fetching rankings")
-            rankings = []
-
-        if isinstance(rankings, dict) and rankings.get("error"):
-            rankings = []
+        else:
+            if (
+                isinstance(rankings_result, dict)
+                and not rankings_result.get("error")
+                and rankings_result["data"]["reportData"]["report"]["rankings"]
+            ):
+                rankings = rankings_result["data"]["reportData"]["report"][
+                    "rankings"
+                ]["data"]
 
         return events, combatant_info, deaths, rankings
 

@@ -967,7 +967,10 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if self._window and self._window.end is None:
             if event["timestamp"] - self._last_swing_at >= self._max_swing_speed:
-                self._window.end = min(self._last_swing_at + self._max_swing_speed / 2, self._fight_duration)
+                self._window.end = min(
+                    self._last_swing_at + self._max_swing_speed / 2,
+                    self._fight_duration,
+                )
 
         if (
             self.predicate(event)

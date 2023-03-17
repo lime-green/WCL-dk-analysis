@@ -363,11 +363,9 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if event["type"] == "damage" and event["ability"] == "Death and Decay":
             if (
-                (
-                    self._last_tick_time is None
-                    or event["timestamp"] - self._last_tick_time > 800
-                ) and not self._is_in_ignore_window(event["timestamp"])
-            ):
+                self._last_tick_time is None
+                or event["timestamp"] - self._last_tick_time > 800
+            ) and not self._is_in_ignore_window(event["timestamp"]):
                 self._dnd_ticks += 1
                 self._last_tick_time = event["timestamp"]
 
