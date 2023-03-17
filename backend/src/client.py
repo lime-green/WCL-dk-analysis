@@ -91,32 +91,6 @@ class WCLClient:
         )
         return (await self._query(metadata_query, "metadata"))["data"]
 
-    async def _is_rankings_available(self, report_code):
-        rankings_query = (
-            """
-{
-    reportData {
-        report(code: "%s") {
-            rankings (
-                playerMetric: dps
-                fightIDs: []
-            )
-        }
-    }
-}
-"""
-            % report_code
-        )
-
-        try:
-            await self._query(rankings_query, "rankings", timeout=0.6)
-            ret = True
-        except asyncio.exceptions.TimeoutError:
-            logging.error("Timeout fetching rankings")
-            ret = False
-
-        return ret
-
     async def _fetch_events(self, report_code, fight_id, source: Source):
         deaths = []
         events = []
@@ -124,11 +98,18 @@ class WCLClient:
         rankings = []
         next_page_timestamp = 0
         rankings_query = """
-rankings(
-    playerMetric: dps
-    fightIDs: [%(fight_id)s]
-)
+{
+    reportData {
+        report(code: "%(report_code)s") {
+            rankings(
+                playerMetric: dps
+                fightIDs: [%(fight_id)s]
+            )
+        }
+    }
+}
 """ % {
+            "report_code": report_code,
             "fight_id": fight_id
         }
 
@@ -159,8 +140,6 @@ rankings(
         data
       }
 
-      %(rankings_query)s
-
       combatantInfo: events(
         startTime: 0
         endTime: 100000000000
@@ -175,8 +154,9 @@ rankings(
   }
 }
 """
-        if not await self._is_rankings_available(report_code):
-            rankings_query = ""
+        rankings_task = asyncio.create_task(
+            self._query(rankings_query, "rankings", timeout=1.5)
+        )
 
         while next_page_timestamp is not None:
             events_query = events_query_t % dict(
@@ -185,7 +165,6 @@ rankings(
                 source_id=source.id,
                 source_name=source.name,
                 fight_id=fight_id,
-                rankings_query=rankings_query,
             )
             r = (await self._query(events_query, "events"))["data"]["reportData"][
                 "report"
@@ -193,14 +172,18 @@ rankings(
 
             if next_page_timestamp == 0:
                 combatant_info = r["combatantInfo"]["data"]
-                if r.get("rankings"):
-                    rankings = r["rankings"]["data"]
                 deaths = [
                     death for death in r["deaths"]["data"] if death["type"] == "death"
                 ]
 
             next_page_timestamp = r["events"]["nextPageTimestamp"]
             events += r["events"]["data"]
+
+        try:
+            rankings = (await rankings_task)["data"]["reportData"]["report"]["rankings"]["data"]
+        except asyncio.exceptions.TimeoutError:
+            logging.error("Timeout fetching rankings")
+            rankings = []
 
         return events, combatant_info, deaths, rankings
 
