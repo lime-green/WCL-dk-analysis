@@ -163,7 +163,6 @@ class WCLClient:
                 report_code=report_code,
                 next_page_timestamp=next_page_timestamp,
                 source_id=source.id,
-                source_name=source.name,
                 fight_id=fight_id,
             )
             r = (await self._query(events_query, "events"))["data"]["reportData"][

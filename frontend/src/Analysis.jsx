@@ -418,11 +418,11 @@ const Summary = () => {
         }
         <div className="analysis-section">
           <h3>Rotation</h3>
-          {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
           {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
           {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
           {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
           {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
+          {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}
           {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
           {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
           {summary.blood_presence_uptime !== undefined && formatUpTime(summary.blood_presence_uptime, "Blood Presence (outside of Gargoyle)")}
