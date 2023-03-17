@@ -184,6 +184,9 @@ class WCLClient:
             logging.error("Timeout fetching rankings")
             rankings = []
 
+        if isinstance(rankings, dict) and rankings.get("error"):
+            rankings = []
+
         return events, combatant_info, deaths, rankings
 
     async def _get_zones(self):
