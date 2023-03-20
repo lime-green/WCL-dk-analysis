@@ -189,9 +189,9 @@ class WCLClient:
                 and not rankings_result.get("error")
                 and rankings_result["data"]["reportData"]["report"]["rankings"]
             ):
-                rankings = rankings_result["data"]["reportData"]["report"][
-                    "rankings"
-                ]["data"]
+                rankings = rankings_result["data"]["reportData"]["report"]["rankings"][
+                    "data"
+                ]
 
         return events, combatant_info, deaths, rankings
 

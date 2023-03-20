@@ -1,4 +1,4 @@
-from analysis.base import AnalysisScorer, BaseAnalyzer
+from analysis.base import AnalysisScorer, BaseAnalyzer, Window
 from analysis.core_analysis import (
     BombAnalyzer,
     BuffTracker,
@@ -343,9 +343,54 @@ class RaiseDeadAnalyzer(BaseAnalyzer):
         }
 
 
+class ObliterateAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_end_time, ignore_windows):
+        self._num_obliterates = 0
+        self._fight_end_time = fight_end_time
+        self._ignore_windows = ignore_windows
+
+    def add_event(self, event):
+        if (
+            event["type"] == "cast"
+            and event["ability"] == "Obliterate"
+            and not event["is_miss"]
+        ):
+            self._num_obliterates += 1
+
+    def score(self):
+        return min(1, self.cpm / self.target_cpm)
+
+    @property
+    def cpm(self):
+        total_time = self._fight_end_time
+        total_window = Window(0, self._fight_end_time)
+        # remove ignore windows
+        for window in self._ignore_windows:
+            total_time -= window.intersection(total_window).duration
+
+        return self._num_obliterates / (total_time / 60000)
+
+    @property
+    def target_cpm(self):
+        return 13
+
+    def report(self):
+        return {
+            "obliterate": {
+                "num_usages": self._num_obliterates,
+                "cpm": self.cpm,
+                "target_cpm": self.target_cpm,
+            }
+        }
+
+
 class FrostAnalysisScorer(AnalysisScorer):
     def get_score_weights(self):
         return {
+            ObliterateAnalyzer: {
+                "weight": 5,
+                "exponent_factor": 1.5,
+            },
             GCDAnalyzer: {
                 "weight": 3,
             },
@@ -405,6 +450,7 @@ class FrostAnalysisConfig(CoreAnalysisConfig):
             HowlingBlastAnalyzer(),
             RimeAnalyzer(buff_tracker),
             RaiseDeadAnalyzer(fight.duration),
+            ObliterateAnalyzer(fight.duration, dead_zone_analyzer.get_dead_zones()),
         ]
 
     def get_scorer(self, analyzers):

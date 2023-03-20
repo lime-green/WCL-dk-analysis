@@ -7,7 +7,7 @@ import UnholyRune from "./assets/unholy_rune.webp";
 import DeathRune from "./assets/death_rune.webp";
 import { GargoyleAnalysis } from "./GargoyleAnalysis"
 import { GhoulAnalysis } from "./GhoulAnalysis.jsx"
-import {formatTimestamp, formatUpTime, formatUsage} from "./helpers"
+import { formatCPM, formatTimestamp, formatUpTime, formatUsage } from "./helpers"
 
 const formatRune = (rune, i) => {
   const src = {
@@ -418,6 +418,7 @@ const Summary = () => {
         }
         <div className="analysis-section">
           <h3>Rotation</h3>
+          {summary.obliterate && formatCPM(summary.obliterate.cpm, summary.obliterate.target_cpm, "Obliterate")}
           {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
           {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
           {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
