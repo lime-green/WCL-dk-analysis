@@ -2,6 +2,7 @@ from analysis.core_analysis import (
     CoreAnalysisConfig,
     DeadZoneAnalyzer,
     BuffTracker,
+    PetNameDetector,
 )
 from analysis.frost_analysis import (
     FrostAnalysisConfig,
@@ -50,15 +51,18 @@ class Analyzer:
         dead_zone_analyzer = self._get_dead_zone_analyzer()
         buff_tracker = self._get_buff_tracker()
         source_id = self._fight.source.id
+        pet_analyzer = PetNameDetector()
 
         for event in self._events:
             if event["sourceID"] == source_id or event["targetID"] == source_id:
                 dead_zone_analyzer.preprocess_event(event)
                 buff_tracker.preprocess_event(event)
+            pet_analyzer.preprocess_event(event)
 
         for event in self._events:
             dead_zone_analyzer.decorate_event(event)
             buff_tracker.decorate_event(event)
+            pet_analyzer.decorate_event(event)
 
         return dead_zone_analyzer
 

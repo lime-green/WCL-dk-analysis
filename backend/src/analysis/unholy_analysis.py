@@ -218,6 +218,7 @@ class GargoyleWindow(Window):
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
+        self._gargoyle_name = "Ebon Gargoyle"
 
     @property
     def up_uptime(self):

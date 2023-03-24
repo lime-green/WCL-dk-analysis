@@ -648,6 +648,29 @@ class BuffTracker(BaseAnalyzer):
         event["buffs"] = self.get_active_buffs(event["timestamp"])
 
 
+class PetNameDetector(BaseAnalyzer):
+    INCLUDE_PET_EVENTS = True
+
+    def __init__(self):
+        self._pet_names = {}
+
+    def preprocess_event(self, event):
+        if event["source"] in ("Army of the Dead", "Ghoul", "Ebon Gargoyle"):
+            return
+
+        if event.get("ability") == "Gargoyle Strike":
+            self._pet_names[event["sourceID"]] = "Ebon Gargoyle"
+        if event.get("ability") == "Claw":
+            if event.get("sourceInstance", 0) > 0:
+                self._pet_names[event["sourceID"]] = "Army of the Dead"
+            else:
+                self._pet_names[event["sourceID"]] = "Ghoul"
+
+    def decorate_event(self, event):
+        if event.get("sourceID") in self._pet_names:
+            event["source"] = self._pet_names[event["sourceID"]]
+
+
 class RPAnalyzer(BaseAnalyzer):
     def __init__(self):
         self._count_wasted = 0
