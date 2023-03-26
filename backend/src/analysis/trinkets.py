@@ -48,6 +48,7 @@ class TrinketPreprocessor(BasePreprocessor):
         APTrinket("Pyrite Infuser", 45286, "Pyrite Infusion", 10, 50),
         HasteTrinket("Mark of Norgannon", 40531, "Mark of Norgannon", 20, 120, on_use=True),
         HasteTrinket("Comet's Trail", 45609, "Comet's Trail", 10, 45),
+        HasteTrinket("Meteorite Whetstone", 37390, "Meteorite Whetstone", 10, 45),
     ]
     TRINKET_MAP = {trinket.item_id: trinket for trinket in TRINKETS}
 
