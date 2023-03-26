@@ -1035,7 +1035,7 @@ class TrinketAnalyzer(BaseAnalyzer):
 
     def _calculate_num_possible(self, trinket: Trinket):
         return max(
-            1 + (self._fight_duration - trinket.proc_cd) // trinket.proc_cd,
+            1 + (self._fight_duration - 10000) // (trinket.proc_cd + 3000),
             self._trinket_usages[trinket.buff_name],
         )
 
