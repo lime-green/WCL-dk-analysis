@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
-from client import fetch_report, PrivateReport
+from client import fetch_report, PrivateReport, TemporaryUnavailable
 from analysis.analyze import analyze
 
 SENTRY_ENABLED = os.environ.get("AWS_EXECUTION_ENV") is not None
@@ -64,6 +64,9 @@ async def analyze_fight(
     except PrivateReport:
         response.status_code = 403
         return {"error": "Can not analyze private reports"}
+    except TemporaryUnavailable:
+        response.status_code = 503
+        return {"error": "Bad response from Warcraft Logs, try again"}
 
     loop = asyncio.get_running_loop()
 

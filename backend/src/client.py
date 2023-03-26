@@ -15,6 +15,10 @@ class PrivateReport(WCLClientException):
     pass
 
 
+class TemporaryUnavailable(WCLClientException):
+    pass
+
+
 class CacheWithExpiry:
     def __init__(self):
         self._cache = {}
@@ -221,6 +225,11 @@ class WCLClient:
         metadata = await self._fetch_metadata(report_id)
         report_metadata = metadata["reportData"]["report"]
         actors = report_metadata["masterData"]["actors"]
+
+        if actors is None:
+            # WCL is not working properly, seen this happen a few times
+            logging.warning("WCL returned no actors")
+            raise TemporaryUnavailable("WCL returned no actors")
 
         for actor in actors:
             if actor["type"] == "Player" and actor["id"] == source_id:
