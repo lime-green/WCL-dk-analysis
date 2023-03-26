@@ -5,9 +5,10 @@ import BloodRune from "./assets/blood_rune.webp";
 import FrostRune from "./assets/frost_rune.webp";
 import UnholyRune from "./assets/unholy_rune.webp";
 import DeathRune from "./assets/death_rune.webp";
+import { ArmyAnalysis } from "./ArmyAnalysis.jsx"
 import { GargoyleAnalysis } from "./GargoyleAnalysis"
 import { GhoulAnalysis } from "./GhoulAnalysis.jsx"
-import { formatCPM, formatTimestamp, formatUpTime, formatUsage } from "./helpers"
+import { formatCPM, formatIcon, formatTimestamp, formatUpTime, formatUsage } from "./helpers"
 
 const formatRune = (rune, i) => {
   const src = {
@@ -443,10 +444,23 @@ const Summary = () => {
           <div className="analysis-section">
             <GhoulAnalysis ghoul={summary.ghoul} />
           </div>
-
+        )}
+        {summary.army && (
+          <div className="analysis-section">
+            <ArmyAnalysis army={summary.army} />
+          </div>
         )}
         <div className="analysis-section">
           <h3>Miscellaneous</h3>
+          {summary.trinket_usages && summary.trinket_usages.map((trinket, index) => (
+            <div key={index}>
+              {formatUsage(
+                trinket.num_actual,
+                trinket.num_possible,
+                <>{formatIcon(trinket.name, trinket.icon)} {trinket.name}</>,
+              )}
+            </div>
+          ))}
           {summary.hyperspeed && formatUsage(
             summary.hyperspeed.num_actual,
             summary.hyperspeed.num_possible,

@@ -23,6 +23,16 @@ class BaseAnalyzer:
         raise NotImplementedError
 
 
+class BasePreprocessor:
+    INCLUDE_PET_EVENTS = False
+
+    def preprocess_event(self, event):
+        raise NotImplementedError
+
+    def decorate_event(self, event):
+        pass
+
+
 class ScoreWeight:
     def __init__(self, score, weight):
         assert 0 <= score <= 1

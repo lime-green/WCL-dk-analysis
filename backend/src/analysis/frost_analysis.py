@@ -8,6 +8,7 @@ from analysis.core_analysis import (
     HyperspeedAnalyzer,
     MeleeUptimeAnalyzer,
     RuneTracker,
+    TrinketAnalyzer,
 )
 from console_table import console
 from report import Fight
@@ -428,6 +429,9 @@ class FrostAnalysisScorer(AnalysisScorer):
             HyperspeedAnalyzer: {
                 "weight": 1,
             },
+            TrinketAnalyzer: {
+                "weight": 1,
+            },
         }
 
     def report(self):
@@ -442,8 +446,8 @@ class FrostAnalysisConfig(CoreAnalysisConfig):
     show_procs = True
     show_speed = True
 
-    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer):
-        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer) + [
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, trinkets):
+        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, trinkets) + [
             DiseaseAnalyzer(fight.encounter.name, fight.duration),
             KMAnalyzer(),
             UAAnalyzer(fight.duration),

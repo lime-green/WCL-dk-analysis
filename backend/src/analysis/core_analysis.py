@@ -1,16 +1,19 @@
+from collections import defaultdict
 from typing import Optional
 
 from analysis.base import (
     AnalysisScorer,
     BaseAnalyzer,
+    BasePreprocessor,
     Window,
     calculate_uptime,
 )
+from analysis.trinkets import Trinket, TrinketPreprocessor
 from console_table import console
 from report import Fight
 
 
-class DeadZoneAnalyzer(BaseAnalyzer):
+class DeadZoneAnalyzer(BasePreprocessor):
     MELEE_ABILITIES = {
         "Melee",
         "Obliterate",
@@ -523,7 +526,7 @@ class BuffWindows:
         return None
 
 
-class BuffTracker(BaseAnalyzer):
+class BuffTracker(BaseAnalyzer, BasePreprocessor):
     def __init__(self, buffs_to_track, end_time, starting_auras, spec):
         self._buffs_to_track = buffs_to_track
         self._spec = spec
@@ -648,7 +651,7 @@ class BuffTracker(BaseAnalyzer):
         event["buffs"] = self.get_active_buffs(event["timestamp"])
 
 
-class PetNameDetector(BaseAnalyzer):
+class PetNameDetector(BasePreprocessor):
     INCLUDE_PET_EVENTS = True
 
     def __init__(self):
@@ -1024,6 +1027,48 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
         }
 
 
+class TrinketAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_duration, trinkets: TrinketPreprocessor):
+        self._fight_duration = fight_duration
+        self._trinkets = trinkets
+        self._trinket_usages = defaultdict(int)
+
+    def _calculate_num_possible(self, trinket: Trinket):
+        return max(
+            1 + (self._fight_duration - trinket.proc_cd) // trinket.proc_cd,
+            self._trinket_usages[trinket.buff_name],
+        )
+
+    def add_event(self, event):
+        if event["type"] == "applybuff" and self._trinkets.has_trinket(event["ability"]):
+            self._trinket_usages[event["ability"]] += 1
+
+    def report(self):
+        return {
+            "trinket_usages": [
+                {
+                    "name": trinket.name,
+                    "num_actual": self._trinket_usages[trinket.buff_name],
+                    "num_possible": self._calculate_num_possible(trinket),
+                    "icon": trinket.icon,
+                }
+                for trinket in self._trinkets
+                if trinket.on_use
+            ]
+        }
+
+    def score(self):
+        num_on_use_trinkets = len([trinket for trinket in self._trinkets if trinket.on_use])
+
+        if num_on_use_trinkets == 0:
+            return 1
+
+        return sum(
+            self._trinket_usages[trinket.buff_name] / self._calculate_num_possible(trinket)
+            for trinket in self._trinkets if trinket.on_use
+        ) / num_on_use_trinkets
+
+
 class CoreAnalysisScorer(AnalysisScorer):
     def get_score_weights(self):
         return {
@@ -1042,6 +1087,9 @@ class CoreAnalysisScorer(AnalysisScorer):
             MeleeUptimeAnalyzer: {
                 "weight": 5,
             },
+            TrinketAnalyzer: {
+                "weight": 1,
+            },
         }
 
     def report(self):
@@ -1056,7 +1104,7 @@ class CoreAnalysisConfig:
     show_procs = False
     show_speed = False
 
-    def get_analyzers(self, fight: Fight, buff_tracker_, dead_zone_analyzer):
+    def get_analyzers(self, fight: Fight, buff_tracker_, dead_zone_analyzer, trinkets):
         return [
             GCDAnalyzer(),
             RPAnalyzer(),
@@ -1064,6 +1112,7 @@ class CoreAnalysisConfig:
             BombAnalyzer(fight.duration),
             HyperspeedAnalyzer(fight.duration),
             MeleeUptimeAnalyzer(fight.duration, dead_zone_analyzer.get_dead_zones()),
+            TrinketAnalyzer(fight.duration, trinkets),
         ]
 
     def get_scorer(self, analyzers):

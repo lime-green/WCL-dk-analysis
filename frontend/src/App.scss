@@ -206,6 +206,10 @@ tr:hover {
 
 .gargoyle-window {
   margin-top: 12px;
+
+  > div {
+    margin-bottom: 2px;
+  }
 }
 
 .gargoyle-window:nth-child(even) {
@@ -215,6 +219,10 @@ tr:hover {
 .gargoyle-subheader {
   font-size: 1.1em;
   margin-bottom: 5px;
+}
+
+.usage-analysis {
+  white-space: pre;
 }
 
 .ability,
@@ -292,6 +300,16 @@ td .rune {
 }
 
 .uptime {
-  width: 300px;
+  width: 350px;
   display: flex;
+}
+
+.centered {
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  margin-left: 5px;
+  margin-right: 5px;
 }

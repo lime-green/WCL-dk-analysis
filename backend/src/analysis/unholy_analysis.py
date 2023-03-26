@@ -16,7 +16,9 @@ from analysis.core_analysis import (
     HyperspeedAnalyzer,
     RPAnalyzer,
     MeleeUptimeAnalyzer,
+    TrinketAnalyzer,
 )
+from analysis.trinkets import TrinketPreprocessor
 from report import Fight
 
 
@@ -177,7 +179,7 @@ class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
 
 class GargoyleWindow(Window):
     def __init__(
-        self, start, fight_duration, buff_tracker: BuffTracker, ignore_windows
+        self, start, fight_duration, buff_tracker: BuffTracker, ignore_windows, trinkets: TrinketPreprocessor
     ):
         self.start = start
         self.end = min(start + 30000, fight_duration)
@@ -218,7 +220,39 @@ class GargoyleWindow(Window):
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
-        self._gargoyle_name = "Ebon Gargoyle"
+        self._trinkets = trinkets
+        self._snapshottable_trinkets = []
+        self._uptime_trinkets = []
+        self.trinket_snapshots = []
+        self.trinket_uptimes = []
+
+        for trinket in self._trinkets:
+            if trinket.snapshots_gargoyle:
+                self._snapshottable_trinkets.append(trinket)
+            else:
+                self._uptime_trinkets.append(trinket)
+
+        for snapshottable_trinket in self._snapshottable_trinkets:
+            self.trinket_snapshots.append({
+                "trinket": snapshottable_trinket,
+                "did_snapshot": buff_tracker.is_active(snapshottable_trinket.buff_name, start),
+            })
+
+        for uptime_trinket in self._uptime_trinkets:
+            uptime = BuffUptimeAnalyzer(
+                self.end,
+                buff_tracker,
+                ignore_windows,
+                uptime_trinket.buff_name,
+                self.start,
+                max_duration=uptime_trinket.proc_duration - 25,
+            )
+
+            self._uptimes.append(uptime)
+            self.trinket_uptimes.append({
+                "trinket": uptime_trinket,
+                "uptime": uptime,
+            })
 
     @property
     def up_uptime(self):
@@ -269,18 +303,27 @@ class GargoyleWindow(Window):
             ScoreWeight(self.up_uptime, 4),
             ScoreWeight(self.bl_uptime, 10 if self.bl_uptime else 0),
             ScoreWeight(self.num_casts / max(1, self.num_melees + self.num_casts), 4),
+            ScoreWeight(
+                len([t for t in self.trinket_snapshots if t["did_snapshot"]]) / len(self.trinket_snapshots),
+                len(self.trinket_snapshots) * 2,
+            ),
+            ScoreWeight(
+                sum([t["uptime"].uptime() for t in self.trinket_uptimes]) / len(self.trinket_snapshots),
+                len(self.trinket_uptimes) * 2,
+            ),
         )
 
 
 class GargoyleAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, fight_duration, buff_tracker, ignore_windows):
+    def __init__(self, fight_duration, buff_tracker, ignore_windows, trinkets):
         self.windows: List[GargoyleWindow] = []
         self._window = None
         self._buff_tracker = buff_tracker
         self._fight_duration = fight_duration
         self._ignore_windows = ignore_windows
+        self._trinkets = trinkets
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
@@ -289,6 +332,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                 self._fight_duration,
                 self._buff_tracker,
                 self._ignore_windows,
+                self._trinkets,
             )
             self.windows.append(self._window)
 
@@ -341,6 +385,20 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "hyperspeed_uptime": window.hyperspeed_uptime,
                         "start": window.start,
                         "end": window.end,
+                        "trinket_snapshots": [
+                            {
+                                "name": t["trinket"].name,
+                                "did_snapshot": t["did_snapshot"],
+                                "icon": t["trinket"].icon,
+                            } for t in window.trinket_snapshots
+                        ],
+                        "trinket_uptimes": [
+                            {
+                                "name": t["trinket"].name,
+                                "uptime": t["uptime"].uptime(),
+                                "icon": t["trinket"].icon,
+                            } for t in window.trinket_uptimes
+                        ],
                     }
                     for window in self.windows
                 ],
@@ -520,6 +578,74 @@ class BloodPresenceUptimeAnalyzer(BaseAnalyzer):
         }
 
 
+class SnapshottableBuff:
+    def __init__(self, buffs, display_name):
+        if isinstance(buffs, str):
+            buffs = {buffs}
+
+        self.buffs = buffs
+        self.display_name = display_name
+
+    def is_active(self, buff_tracker: BuffTracker, timestamp):
+        return any(buff_tracker.is_active(buff, timestamp) for buff in self.buffs)
+
+
+class ArmyAnalyzer(BaseAnalyzer):
+    INCLUDE_PET_EVENTS = True
+
+    def __init__(self, buff_tracker: BuffTracker, trinkets: TrinketPreprocessor):
+        self._buff_tracker = buff_tracker
+        self.total_damage = 0
+        self._snapshots = []
+        self._snapshottable_trinkets = [
+            trinket
+            for trinket in trinkets
+            if trinket.snapshots_army
+        ]
+        self._snapshottable_buffs = [
+            SnapshottableBuff({"Bloodlust", "Heroism"}, "Bloodlust"),
+            SnapshottableBuff("Hyperspeed Acceleration", "Hyperspeed"),
+            SnapshottableBuff("Unholy Strength", "Fallen Crusader"),
+            SnapshottableBuff("Speed", "Speed"),
+        ]
+
+    def add_event(self, event):
+        if event["type"] == "cast" and event["ability"] == "Army of the Dead":
+            for trinket in self._snapshottable_trinkets:
+                did_snapshot = self._buff_tracker.is_active(trinket.buff_name, event["timestamp"])
+                self._snapshots.append(
+                    {
+                        "name": trinket.name,
+                        "did_snapshot": did_snapshot,
+                        "icon": trinket.icon,
+                    }
+                )
+            for buff in self._snapshottable_buffs:
+                self._snapshots.append(
+                    {
+                        "name": buff.display_name,
+                        "did_snapshot": buff.is_active(self._buff_tracker, event["timestamp"]),
+                    }
+                )
+
+        if event["type"] == "damage" and event["source"] == "Army of the Dead":
+            self.total_damage += event["amount"]
+
+    def report(self):
+        return {
+            "army": {
+                "damage": self.total_damage,
+                "snapshots": self._snapshots,
+            }
+        }
+
+    def score(self):
+        if not self._snapshots:
+            return 1
+
+        return sum(snapshot["did_snapshot"] for snapshot in self._snapshots) / len(self._snapshots)
+
+
 class UnholyAnalysisScorer(AnalysisScorer):
     def get_score_weights(self):
         exponent_factor = 1.5
@@ -577,6 +703,12 @@ class UnholyAnalysisScorer(AnalysisScorer):
             HyperspeedAnalyzer: {
                 "weight": 2,
             },
+            TrinketAnalyzer: {
+                "weight": 1,
+            },
+            ArmyAnalyzer: {
+                "weight": 1,
+            },
         }
 
     def report(self):
@@ -588,11 +720,11 @@ class UnholyAnalysisScorer(AnalysisScorer):
 
 
 class UnholyAnalysisConfig(CoreAnalysisConfig):
-    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer):
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, trinkets):
         dead_zones = dead_zone_analyzer.get_dead_zones()
-        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones)
+        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones, trinkets)
 
-        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer) + [
+        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, trinkets) + [
             BoneShieldAnalyzer(fight.duration, buff_tracker, dead_zones),
             DesolationAnalyzer(fight.duration, buff_tracker, dead_zones),
             GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones),
@@ -604,6 +736,7 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
             BloodPresenceUptimeAnalyzer(
                 fight.duration, buff_tracker, dead_zones, gargoyle.windows
             ),
+            ArmyAnalyzer(buff_tracker, trinkets),
         ]
 
     def get_scorer(self, analyzers):

@@ -19,12 +19,11 @@ export const formatUsage = (numActual, numPossible, spellName) => {
   }
 
   return (
-    <div className="usage-analysis">
+    <div className="usage-analysis centered">
       {Icon}
       You used {spellName} <span className={color}>
           {numActual} of {numPossible}
-        </span>{" "}
-      possible times
+        </span> possible times
     </div>
   )
 }
@@ -47,10 +46,7 @@ export const formatCPM = (cpm, targetCPM, spellName) => {
   return (
     <div className="usage-analysis">
       {Icon}
-      You casted {spellName} <span className={color}>
-          {cpm.toFixed(2)}
-        </span>{" "}
-      times per minute
+      You casted {spellName} <span className={color}> {cpm.toFixed(2)} </span> times per minute
     </div>
   )
 }
@@ -75,7 +71,7 @@ export const formatUpTime = (upTime, spellName, infoOnly=false) => {
   color += " uptime-score"
 
   return (
-    <div className="uptime">
+    <div className="uptime centered">
       <div>{Icon}</div>
       {spellName} uptime: <span className={color}>{(upTime * 100).toFixed(2)}%</span>
     </div>
@@ -90,15 +86,31 @@ export const booleanCheck = (bool, positive, negative) => {
   }
 
   return (
-    <div>
+    <div className={"centered"}>
       {Icon}
-      <span>{bool ? positive : negative}</span>
+      <div className={"centered"}>{bool ? positive : negative}</div>
     </div>
   )
 }
 
 export const hl = (text) => {
   return <span className="hl">{text}</span>
+}
+
+export const formatIcon = (name, href) => {
+  if (!href) {
+    return null
+  }
+
+  return (
+    <img
+      className={"icon"}
+      src={href}
+      title={name}
+      alt={name}
+      width={20}
+    />
+  );
 }
 
 export const formatTimestamp = (milliSeconds, zeroPad = true) => {

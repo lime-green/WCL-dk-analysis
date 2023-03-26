@@ -1,8 +1,9 @@
-import {booleanCheck, formatTimestamp, formatUpTime, formatUsage, hl, Info} from "./helpers"
+import {booleanCheck, formatIcon, formatTimestamp, formatUpTime, formatUsage, hl, Info} from "./helpers"
 
 
 export const GargoyleAnalysis = ({ gargoyle }) => {
   const { windows } = gargoyle
+
   return (
     <div>
       <h3>Gargoyle</h3>
@@ -22,6 +23,15 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
                   {Info}
                   <span>Damage: {hl(window.damage.toLocaleString())} ({hl(numCast)} casts, {hl(numMelee)} melees)</span>
                 </div>
+                {window.trinket_uptimes.map((uptime, i) => {
+                  const icon = formatIcon(uptime.name, uptime.icon)
+
+                  return (
+                    <div key={i}>
+                      {formatUpTime(uptime.uptime, <>{icon} {uptime.name}</>)}
+                    </div>
+                  )
+                })}
                 <div>
                   {formatUpTime(window.unholy_presence_uptime, "Unholy Presence")}
                 </div>
@@ -34,8 +44,16 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
                 <div>
                   {formatUpTime(window.speed_uptime, "Speed")}
                 </div>
+                {window.trinket_snapshots.map((snapshot, i) => {
+                  const icon = formatIcon(snapshot.name, snapshot.icon)
+
+                  return (
+                    <div key={i}>
+                      {booleanCheck(snapshot.did_snapshot, <>You snapshotted {icon} {snapshot.name}</>, <>You did not snapshot {icon} {snapshot.name}</>)}
+                    </div>
+                  )
+                })}
                 {booleanCheck(window.snapshotted_fc, "You snapshotted Fallen Crusader", "You did not snapshot Fallen Crusader")}
-                {booleanCheck(window.snapshotted_greatness, "You snapshotted Greatness", "You did not snapshot Greatness")}
               </div>
             )
           })}
