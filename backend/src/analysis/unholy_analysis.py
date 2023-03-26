@@ -304,11 +304,11 @@ class GargoyleWindow(Window):
             ScoreWeight(self.bl_uptime, 10 if self.bl_uptime else 0),
             ScoreWeight(self.num_casts / max(1, self.num_melees + self.num_casts), 4),
             ScoreWeight(
-                len([t for t in self.trinket_snapshots if t["did_snapshot"]]) / len(self.trinket_snapshots),
+                len([t for t in self.trinket_snapshots if t["did_snapshot"]]) / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
                 len(self.trinket_snapshots) * 2,
             ),
             ScoreWeight(
-                sum([t["uptime"].uptime() for t in self.trinket_uptimes]) / len(self.trinket_snapshots),
+                sum([t["uptime"].uptime() for t in self.trinket_uptimes]) / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
                 len(self.trinket_uptimes) * 2,
             ),
         )
