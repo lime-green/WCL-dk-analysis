@@ -319,7 +319,9 @@ class Fight:
             aura["ability_icon"] = self._report.get_ability_icon(aura["ability"])
 
         for gear in combatant_info["gear"]:
-            gear["item_icon"] = f"https://wow.zamimg.com/images/wow/icons/large/{gear['icon']}"
+            gear[
+                "item_icon"
+            ] = f"https://wow.zamimg.com/images/wow/icons/large/{gear['icon']}"
         return combatant_info
 
     def _fix_razorscale(self):

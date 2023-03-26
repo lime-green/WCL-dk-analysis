@@ -179,7 +179,12 @@ class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
 
 class GargoyleWindow(Window):
     def __init__(
-        self, start, fight_duration, buff_tracker: BuffTracker, ignore_windows, trinkets: TrinketPreprocessor
+        self,
+        start,
+        fight_duration,
+        buff_tracker: BuffTracker,
+        ignore_windows,
+        trinkets: TrinketPreprocessor,
     ):
         self.start = start
         self.end = min(start + 30000, fight_duration)
@@ -233,10 +238,14 @@ class GargoyleWindow(Window):
                 self._uptime_trinkets.append(trinket)
 
         for snapshottable_trinket in self._snapshottable_trinkets:
-            self.trinket_snapshots.append({
-                "trinket": snapshottable_trinket,
-                "did_snapshot": buff_tracker.is_active(snapshottable_trinket.buff_name, start),
-            })
+            self.trinket_snapshots.append(
+                {
+                    "trinket": snapshottable_trinket,
+                    "did_snapshot": buff_tracker.is_active(
+                        snapshottable_trinket.buff_name, start
+                    ),
+                }
+            )
 
         for uptime_trinket in self._uptime_trinkets:
             uptime = BuffUptimeAnalyzer(
@@ -249,10 +258,12 @@ class GargoyleWindow(Window):
             )
 
             self._uptimes.append(uptime)
-            self.trinket_uptimes.append({
-                "trinket": uptime_trinket,
-                "uptime": uptime,
-            })
+            self.trinket_uptimes.append(
+                {
+                    "trinket": uptime_trinket,
+                    "uptime": uptime,
+                }
+            )
 
     @property
     def up_uptime(self):
@@ -304,11 +315,13 @@ class GargoyleWindow(Window):
             ScoreWeight(self.bl_uptime, 10 if self.bl_uptime else 0),
             ScoreWeight(self.num_casts / max(1, self.num_melees + self.num_casts), 4),
             ScoreWeight(
-                len([t for t in self.trinket_snapshots if t["did_snapshot"]]) / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
+                len([t for t in self.trinket_snapshots if t["did_snapshot"]])
+                / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
                 len(self.trinket_snapshots) * 2,
             ),
             ScoreWeight(
-                sum([t["uptime"].uptime() for t in self.trinket_uptimes]) / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
+                sum([t["uptime"].uptime() for t in self.trinket_uptimes])
+                / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
                 len(self.trinket_uptimes) * 2,
             ),
         )
@@ -390,14 +403,16 @@ class GargoyleAnalyzer(BaseAnalyzer):
                                 "name": t["trinket"].name,
                                 "did_snapshot": t["did_snapshot"],
                                 "icon": t["trinket"].icon,
-                            } for t in window.trinket_snapshots
+                            }
+                            for t in window.trinket_snapshots
                         ],
                         "trinket_uptimes": [
                             {
                                 "name": t["trinket"].name,
                                 "uptime": t["uptime"].uptime(),
                                 "icon": t["trinket"].icon,
-                            } for t in window.trinket_uptimes
+                            }
+                            for t in window.trinket_uptimes
                         ],
                     }
                     for window in self.windows
@@ -598,9 +613,7 @@ class ArmyAnalyzer(BaseAnalyzer):
         self.total_damage = 0
         self._snapshots = []
         self._snapshottable_trinkets = [
-            trinket
-            for trinket in trinkets
-            if trinket.snapshots_army
+            trinket for trinket in trinkets if trinket.snapshots_army
         ]
         self._snapshottable_buffs = [
             SnapshottableBuff({"Bloodlust", "Heroism"}, "Bloodlust"),
@@ -612,7 +625,9 @@ class ArmyAnalyzer(BaseAnalyzer):
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Army of the Dead":
             for trinket in self._snapshottable_trinkets:
-                did_snapshot = self._buff_tracker.is_active(trinket.buff_name, event["timestamp"])
+                did_snapshot = self._buff_tracker.is_active(
+                    trinket.buff_name, event["timestamp"]
+                )
                 self._snapshots.append(
                     {
                         "name": trinket.name,
@@ -624,7 +639,9 @@ class ArmyAnalyzer(BaseAnalyzer):
                 self._snapshots.append(
                     {
                         "name": buff.display_name,
-                        "did_snapshot": buff.is_active(self._buff_tracker, event["timestamp"]),
+                        "did_snapshot": buff.is_active(
+                            self._buff_tracker, event["timestamp"]
+                        ),
                     }
                 )
 
@@ -643,7 +660,9 @@ class ArmyAnalyzer(BaseAnalyzer):
         if not self._snapshots:
             return 1
 
-        return sum(snapshot["did_snapshot"] for snapshot in self._snapshots) / len(self._snapshots)
+        return sum(snapshot["did_snapshot"] for snapshot in self._snapshots) / len(
+            self._snapshots
+        )
 
 
 class UnholyAnalysisScorer(AnalysisScorer):
@@ -724,7 +743,9 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
         dead_zones = dead_zone_analyzer.get_dead_zones()
         gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones, trinkets)
 
-        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, trinkets) + [
+        return super().get_analyzers(
+            fight, buff_tracker, dead_zone_analyzer, trinkets
+        ) + [
             BoneShieldAnalyzer(fight.duration, buff_tracker, dead_zones),
             DesolationAnalyzer(fight.duration, buff_tracker, dead_zones),
             GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones),

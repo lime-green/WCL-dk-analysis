@@ -1040,7 +1040,9 @@ class TrinketAnalyzer(BaseAnalyzer):
         )
 
     def add_event(self, event):
-        if event["type"] == "applybuff" and self._trinkets.has_trinket(event["ability"]):
+        if event["type"] == "applybuff" and self._trinkets.has_trinket(
+            event["ability"]
+        ):
             self._trinket_usages[event["ability"]] += 1
 
     def report(self):
@@ -1058,15 +1060,22 @@ class TrinketAnalyzer(BaseAnalyzer):
         }
 
     def score(self):
-        num_on_use_trinkets = len([trinket for trinket in self._trinkets if trinket.on_use])
+        num_on_use_trinkets = len(
+            [trinket for trinket in self._trinkets if trinket.on_use]
+        )
 
         if num_on_use_trinkets == 0:
             return 1
 
-        return sum(
-            self._trinket_usages[trinket.buff_name] / self._calculate_num_possible(trinket)
-            for trinket in self._trinkets if trinket.on_use
-        ) / num_on_use_trinkets
+        return (
+            sum(
+                self._trinket_usages[trinket.buff_name]
+                / self._calculate_num_possible(trinket)
+                for trinket in self._trinkets
+                if trinket.on_use
+            )
+            / num_on_use_trinkets
+        )
 
 
 class CoreAnalysisScorer(AnalysisScorer):

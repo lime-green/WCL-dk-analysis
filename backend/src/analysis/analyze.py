@@ -77,7 +77,9 @@ class Analyzer:
 
     def _get_trinket_preprocessor(self):
         if not hasattr(self, "_trinket_preprocessor"):
-            self._trinket_preprocessor = TrinketPreprocessor(self._fight.get_combatant_info(self._fight.source.id))
+            self._trinket_preprocessor = TrinketPreprocessor(
+                self._fight.get_combatant_info(self._fight.source.id)
+            )
         return self._trinket_preprocessor
 
     def _get_buff_tracker(self):
