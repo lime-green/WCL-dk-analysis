@@ -150,7 +150,7 @@ class DeadZoneAnalyzer(BasePreprocessor):
 
         if (
             self._last_event
-            and event["timestamp"] - self._last_event["timestamp"] > 10000
+            and event["timestamp"] - self._last_event["timestamp"] > 20000
         ):
             dead_zone = self.DeadZone(self._last_event["timestamp"], event["timestamp"])
             self._dead_zones.append(dead_zone)

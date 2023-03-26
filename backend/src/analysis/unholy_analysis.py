@@ -73,12 +73,9 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         windows = list(self._get_windows())
         windows = self._clamp_windows(windows)
         ignore_windows = self._clamp_windows(self._ignore_windows)
-
         total_duration = self._end_time - self._start_time
-        if self._max_duration:
-            total_duration = min(total_duration, self._max_duration)
 
-        return min(1, calculate_uptime(windows, ignore_windows, total_duration))
+        return min(1, calculate_uptime(windows, ignore_windows, total_duration, self._max_duration))
 
     def score(self):
         return self.uptime()

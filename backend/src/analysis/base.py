@@ -114,7 +114,7 @@ class Window:
         return f"<Window start={self.start} end={self.end}>"
 
 
-def calculate_uptime(windows, ignore_windows, total_duration):
+def calculate_uptime(windows, ignore_windows, total_duration, max_duration=None):
     total_uptime = sum(window.duration for window in windows)
 
     for window in windows:
@@ -125,6 +125,11 @@ def calculate_uptime(windows, ignore_windows, total_duration):
     total_duration_without_ignores = total_duration - sum(
         window.duration for window in ignore_windows
     )
+    if max_duration is not None:
+        total_duration_without_ignores = min(
+            total_duration_without_ignores,
+            max_duration,
+        )
     return total_uptime / total_duration_without_ignores
 
 
