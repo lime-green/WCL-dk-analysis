@@ -1059,12 +1059,12 @@ class TrinketAnalyzer(BaseAnalyzer):
             ]
         }
 
-    def score(self):
-        num_on_use_trinkets = len(
-            [trinket for trinket in self._trinkets if trinket.on_use]
-        )
+    @property
+    def num_on_use_trinkets(self):
+        return len([trinket for trinket in self._trinkets if trinket.on_use])
 
-        if num_on_use_trinkets == 0:
+    def score(self):
+        if self.num_on_use_trinkets == 0:
             return 1
 
         return (
@@ -1074,7 +1074,7 @@ class TrinketAnalyzer(BaseAnalyzer):
                 for trinket in self._trinkets
                 if trinket.on_use
             )
-            / num_on_use_trinkets
+            / self.num_on_use_trinkets
         )
 
 
@@ -1097,7 +1097,7 @@ class CoreAnalysisScorer(AnalysisScorer):
                 "weight": 5,
             },
             TrinketAnalyzer: {
-                "weight": 1,
+                "weight": lambda ta: ta.num_on_use_trinkets,
             },
         }
 

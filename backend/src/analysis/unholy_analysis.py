@@ -658,7 +658,7 @@ class ArmyAnalyzer(BaseAnalyzer):
 
     def score(self):
         if not self._snapshots:
-            return 1
+            return 0
 
         return sum(snapshot["did_snapshot"] for snapshot in self._snapshots) / len(
             self._snapshots
@@ -723,10 +723,10 @@ class UnholyAnalysisScorer(AnalysisScorer):
                 "weight": 2,
             },
             TrinketAnalyzer: {
-                "weight": 1,
+                "weight": lambda ta: ta.num_on_use_trinkets * 2,
             },
             ArmyAnalyzer: {
-                "weight": 1,
+                "weight": 3,
             },
         }
 
