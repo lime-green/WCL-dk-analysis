@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 
 import aiohttp
@@ -310,8 +311,8 @@ class WCLClient:
 
 def get_client():
     return WCLClient(
-        "***REMOVED***",
-        "***REMOVED***",
+        os.environ["WCL_CLIENT_ID"],
+        os.environ["WCL_CLIENT_SECRET"],
     )
 
 
