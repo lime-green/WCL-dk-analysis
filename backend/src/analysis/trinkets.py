@@ -64,7 +64,7 @@ class TrinketPreprocessor(BasePreprocessor):
     def _parse_trinkets(self, combatant_info):
         trinkets = []
 
-        for item in combatant_info["gear"]:
+        for item in combatant_info.get("gear", []):
             trinket = self._parse_trinket(item)
             if trinket:
                 trinket.icon = item["item_icon"]
