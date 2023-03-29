@@ -741,12 +741,16 @@ class GCDAnalyzer(BaseAnalyzer):
         "Mind Freeze",
     }
 
-    def __init__(self):
+    def __init__(self, source_id):
         self._gcds = []
         self._last_event = None
+        self._source_id = source_id
 
     def add_event(self, event):
         if not event["type"] == "cast":
+            return
+
+        if event["sourceID"] != self._source_id:
             return
 
         if self._last_event is None:
@@ -1115,7 +1119,7 @@ class CoreAnalysisConfig:
 
     def get_analyzers(self, fight: Fight, buff_tracker_, dead_zone_analyzer, trinkets):
         return [
-            GCDAnalyzer(),
+            GCDAnalyzer(fight.source.id),
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),
