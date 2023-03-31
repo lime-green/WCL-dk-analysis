@@ -322,6 +322,7 @@ class Fight:
             gear[
                 "item_icon"
             ] = f"https://wow.zamimg.com/images/wow/icons/large/{gear['icon']}"
+
         return combatant_info
 
     def _fix_razorscale(self):

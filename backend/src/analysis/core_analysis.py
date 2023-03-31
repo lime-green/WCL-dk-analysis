@@ -510,6 +510,9 @@ class BuffWindows:
     def num_windows(self):
         return len(self._windows)
 
+    def pop(self):
+        return self._windows.pop()
+
     def add_window(self, start, end=None):
         self._windows.append(Window(start, end))
 
@@ -583,6 +586,12 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
             if not windows.has_window:
                 windows.add_window(0)
         elif event["type"] == "applybuff":
+            if event["ability"] in ("Speed", "Indestructible"):
+                if self.is_active("Speed", event["timestamp"]):
+                    self._buff_windows["Speed"].pop()
+                elif self.is_active("Indestructible", event["timestamp"]):
+                    self._buff_windows["Indestructible"].pop()
+
             if not windows.has_active_window:
                 windows.add_window(event["timestamp"])
         elif event["type"] == "removebuff":
