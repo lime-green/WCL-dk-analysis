@@ -1,4 +1,4 @@
-# dk-analyze
+# WCL-dk-analysis
 
 [Chrome Extension](https://chrome.google.com/webstore/detail/wcl-dk-analysis/bdcgiccpmhdchjjglgompcacmknbbhkj)
 
