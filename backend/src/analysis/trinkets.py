@@ -16,7 +16,7 @@ class Trinket:
         raise NotImplementedError
 
     @property
-    def snapshots_army(self):
+    def snapshots_army_haste(self):
         raise NotImplementedError
 
 
@@ -26,8 +26,8 @@ class APTrinket(Trinket):
         return True
 
     @property
-    def snapshots_army(self):
-        return True
+    def snapshots_army_haste(self):
+        return False
 
 
 class HasteTrinket(Trinket):
@@ -36,7 +36,7 @@ class HasteTrinket(Trinket):
         return False
 
     @property
-    def snapshots_army(self):
+    def snapshots_army_haste(self):
         return True
 
 

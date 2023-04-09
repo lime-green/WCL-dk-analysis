@@ -75,7 +75,12 @@ class BuffUptimeAnalyzer(BaseAnalyzer):
         ignore_windows = self._clamp_windows(self._ignore_windows)
         total_duration = self._end_time - self._start_time
 
-        return min(1, calculate_uptime(windows, ignore_windows, total_duration, self._max_duration))
+        return min(
+            1,
+            calculate_uptime(
+                windows, ignore_windows, total_duration, self._max_duration
+            ),
+        )
 
     def score(self):
         return self.uptime()
@@ -610,12 +615,11 @@ class ArmyAnalyzer(BaseAnalyzer):
         self.total_damage = 0
         self._snapshots = []
         self._snapshottable_trinkets = [
-            trinket for trinket in trinkets if trinket.snapshots_army
+            trinket for trinket in trinkets if trinket.snapshots_army_haste
         ]
         self._snapshottable_buffs = [
             SnapshottableBuff({"Bloodlust", "Heroism"}, "Bloodlust"),
             SnapshottableBuff("Hyperspeed Acceleration", "Hyperspeed"),
-            SnapshottableBuff("Unholy Strength", "Fallen Crusader"),
             SnapshottableBuff("Speed", "Speed"),
         ]
 
