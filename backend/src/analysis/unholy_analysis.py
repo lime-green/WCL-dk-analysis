@@ -264,6 +264,7 @@ class GargoyleWindow(Window):
                 {
                     "trinket": uptime_trinket,
                     "uptime": uptime,
+                    "duration": uptime_trinket.proc_duration,
                 }
             )
 
@@ -323,7 +324,7 @@ class GargoyleWindow(Window):
             ),
             ScoreWeight(
                 sum([t["uptime"].uptime() for t in self.trinket_uptimes])
-                / (len(self.trinket_snapshots) if self.trinket_snapshots else 1),
+                / (len(self.trinket_uptimes) if self.trinket_uptimes else 1),
                 len(self.trinket_uptimes) * 2,
             ),
         )
