@@ -446,10 +446,8 @@ class FrostAnalysisConfig(CoreAnalysisConfig):
     show_procs = True
     show_speed = True
 
-    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, trinkets):
-        return super().get_analyzers(
-            fight, buff_tracker, dead_zone_analyzer, trinkets
-        ) + [
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, items):
+        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, items) + [
             DiseaseAnalyzer(fight.encounter.name, fight.duration),
             KMAnalyzer(),
             UAAnalyzer(fight.duration),

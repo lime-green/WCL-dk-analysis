@@ -51,20 +51,21 @@ export const formatCPM = (cpm, targetCPM, spellName) => {
   )
 }
 
-export const formatUpTime = (upTime, spellName, infoOnly=false) => {
+export const formatUpTime = (upTime, spellName, infoOnly=false, maxUptime = 1.0) => {
   let Icon = X
+  const uptimePercent = upTime / maxUptime
 
   let color = "red"
   if (infoOnly) {
     color = "hl"
     Icon = Info
-  } else if (upTime > 0.9) {
+  } else if (uptimePercent > 0.9) {
     color = "green"
     Icon = Check
-  } else if (upTime > 0.65) {
+  } else if (uptimePercent > 0.65) {
     color = "yellow"
     Icon = Warning
-  } else if (upTime > 0.5) {
+  } else if (uptimePercent > 0.5) {
     color = "orange"
   }
 

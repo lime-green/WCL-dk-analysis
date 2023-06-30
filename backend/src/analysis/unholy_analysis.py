@@ -6,7 +6,6 @@ from analysis.base import (
     ScoreWeight,
     calculate_uptime,
     combine_windows,
-    range_overlap,
     Window,
 )
 from analysis.core_analysis import (
@@ -17,73 +16,10 @@ from analysis.core_analysis import (
     RPAnalyzer,
     MeleeUptimeAnalyzer,
     TrinketAnalyzer,
+    BuffUptimeAnalyzer,
 )
-from analysis.trinkets import TrinketPreprocessor
+from analysis.items import ItemPreprocessor
 from report import Fight
-
-
-class BuffUptimeAnalyzer(BaseAnalyzer):
-    def __init__(
-        self,
-        end_time,
-        buff_tracker: BuffTracker,
-        ignore_windows,
-        buff_names,
-        start_time=0,
-        max_duration=None,
-    ):
-        self._start_time = start_time
-        self._end_time = end_time
-        self._max_duration = max_duration
-        self._buff_tracker = buff_tracker
-        self._ignore_windows = ignore_windows
-
-        if isinstance(buff_names, set):
-            self._buff_names = buff_names
-        else:
-            self._buff_names = {buff_names}
-
-    def _get_windows(self):
-        for buff_name in self._buff_names:
-            for window in self._buff_tracker.get_windows(buff_name):
-                yield window
-
-    def set_start_time(self, start_time):
-        self._start_time = start_time
-
-    def _clamp_windows(self, windows):
-        clamped_windows = []
-
-        for i, window in enumerate(windows):
-            if not range_overlap(
-                (window.start, window.end), (self._start_time, self._end_time)
-            ):
-                continue
-
-            clamped_window = Window(window.start, window.end)
-            if window.end > self._end_time:
-                clamped_window.end = self._end_time
-            if window.start < self._start_time:
-                clamped_window.start = self._start_time
-            clamped_windows.append(clamped_window)
-
-        return clamped_windows
-
-    def uptime(self):
-        windows = list(self._get_windows())
-        windows = self._clamp_windows(windows)
-        ignore_windows = self._clamp_windows(self._ignore_windows)
-        total_duration = self._end_time - self._start_time
-
-        return min(
-            1,
-            calculate_uptime(
-                windows, ignore_windows, total_duration, self._max_duration
-            ),
-        )
-
-    def score(self):
-        return self.uptime()
 
 
 class DebuffUptimeAnalyzer(BaseAnalyzer):
@@ -186,7 +122,7 @@ class GargoyleWindow(Window):
         fight_duration,
         buff_tracker: BuffTracker,
         ignore_windows,
-        trinkets: TrinketPreprocessor,
+        items: ItemPreprocessor,
     ):
         self.start = start
         self.end = min(start + 30000, fight_duration)
@@ -227,13 +163,13 @@ class GargoyleWindow(Window):
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
-        self._trinkets = trinkets
+        self._items = items
         self._snapshottable_trinkets = []
         self._uptime_trinkets = []
         self.trinket_snapshots = []
         self.trinket_uptimes = []
 
-        for trinket in self._trinkets:
+        for trinket in self._items.trinkets:
             if trinket.snapshots_gargoyle:
                 self._snapshottable_trinkets.append(trinket)
             else:
@@ -333,13 +269,13 @@ class GargoyleWindow(Window):
 class GargoyleAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, fight_duration, buff_tracker, ignore_windows, trinkets):
+    def __init__(self, fight_duration, buff_tracker, ignore_windows, items):
         self.windows: List[GargoyleWindow] = []
         self._window = None
         self._buff_tracker = buff_tracker
         self._fight_duration = fight_duration
         self._ignore_windows = ignore_windows
-        self._trinkets = trinkets
+        self._items = items
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Summon Gargoyle":
@@ -348,7 +284,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                 self._fight_duration,
                 self._buff_tracker,
                 self._ignore_windows,
-                self._trinkets,
+                self._items,
             )
             self.windows.append(self._window)
 
@@ -611,12 +547,12 @@ class SnapshottableBuff:
 class ArmyAnalyzer(BaseAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, buff_tracker: BuffTracker, trinkets: TrinketPreprocessor):
+    def __init__(self, buff_tracker: BuffTracker, items: ItemPreprocessor):
         self._buff_tracker = buff_tracker
         self.total_damage = 0
         self._snapshots = []
         self._snapshottable_trinkets = [
-            trinket for trinket in trinkets if trinket.snapshots_army_haste
+            trinket for trinket in items.trinkets if trinket.snapshots_army_haste
         ]
         self._snapshottable_buffs = [
             SnapshottableBuff({"Bloodlust", "Heroism"}, "Bloodlust"),
@@ -665,6 +601,24 @@ class ArmyAnalyzer(BaseAnalyzer):
         return sum(snapshot["did_snapshot"] for snapshot in self._snapshots) / len(
             self._snapshots
         )
+
+
+class T9UptimeAnalyzer(BaseAnalyzer):
+    def __init__(self, buff_tracker: BuffTracker, ignore_windows):
+        self._buff_tracker = buff_tracker
+        self._ignore_windows = ignore_windows
+
+    def uptime(self):
+        windows = self._buff_tracker.get_windows("T9 2pc")
+        return calculate_uptime(windows, self._ignore_windows)
+
+    def score(self):
+        return self.uptime()
+
+    def report(self):
+        return {
+            "t9_2pc_uptime": self.uptime(),
+        }
 
 
 class UnholyAnalysisScorer(AnalysisScorer):
@@ -741,13 +695,11 @@ class UnholyAnalysisScorer(AnalysisScorer):
 
 
 class UnholyAnalysisConfig(CoreAnalysisConfig):
-    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, trinkets):
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, items):
         dead_zones = dead_zone_analyzer.get_dead_zones()
-        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones, trinkets)
+        gargoyle = GargoyleAnalyzer(fight.duration, buff_tracker, dead_zones, items)
 
-        return super().get_analyzers(
-            fight, buff_tracker, dead_zone_analyzer, trinkets
-        ) + [
+        return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, items) + [
             BoneShieldAnalyzer(fight.duration, buff_tracker, dead_zones),
             DesolationAnalyzer(fight.duration, buff_tracker, dead_zones),
             GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones),
@@ -759,7 +711,7 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
             BloodPresenceUptimeAnalyzer(
                 fight.duration, buff_tracker, dead_zones, gargoyle.windows
             ),
-            ArmyAnalyzer(buff_tracker, trinkets),
+            ArmyAnalyzer(buff_tracker, items),
         ]
 
     def get_scorer(self, analyzers):

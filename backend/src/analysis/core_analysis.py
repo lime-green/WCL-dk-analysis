@@ -7,8 +7,9 @@ from analysis.base import (
     BasePreprocessor,
     Window,
     calculate_uptime,
+    range_overlap,
 )
-from analysis.trinkets import Trinket, TrinketPreprocessor
+from analysis.items import Trinket, ItemPreprocessor
 from console_table import console
 from report import Fight
 
@@ -1041,9 +1042,9 @@ class MeleeUptimeAnalyzer(BaseAnalyzer):
 
 
 class TrinketAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, trinkets: TrinketPreprocessor):
+    def __init__(self, fight_duration, items: ItemPreprocessor):
         self._fight_duration = fight_duration
-        self._trinkets = trinkets
+        self._items = items
         self._trinket_usages = defaultdict(int)
 
     def _calculate_num_possible(self, trinket: Trinket):
@@ -1053,9 +1054,7 @@ class TrinketAnalyzer(BaseAnalyzer):
         )
 
     def add_event(self, event):
-        if event["type"] == "applybuff" and self._trinkets.has_trinket(
-            event["ability"]
-        ):
+        if event["type"] == "applybuff" and self._items.has_trinket(event["ability"]):
             self._trinket_usages[event["ability"]] += 1
 
     def report(self):
@@ -1067,14 +1066,14 @@ class TrinketAnalyzer(BaseAnalyzer):
                     "num_possible": self._calculate_num_possible(trinket),
                     "icon": trinket.icon,
                 }
-                for trinket in self._trinkets
+                for trinket in self._items.trinkets
                 if trinket.on_use
             ]
         }
 
     @property
     def num_on_use_trinkets(self):
-        return len([trinket for trinket in self._trinkets if trinket.on_use])
+        return len([trinket for trinket in self._items.trinkets if trinket.on_use])
 
     def score(self):
         if self.num_on_use_trinkets == 0:
@@ -1084,11 +1083,147 @@ class TrinketAnalyzer(BaseAnalyzer):
             sum(
                 self._trinket_usages[trinket.buff_name]
                 / self._calculate_num_possible(trinket)
-                for trinket in self._trinkets
+                for trinket in self._items.trinkets
                 if trinket.on_use
             )
             / self.num_on_use_trinkets
         )
+
+
+class T9UptimeAnalyzer(BaseAnalyzer):
+    def __init__(
+        self,
+        fight_duration,
+        buff_tracker: BuffTracker,
+        items: ItemPreprocessor,
+        ignore_windows,
+    ):
+        self._fight_duration = fight_duration
+        self._items = items
+        self._has_2p = items.has_t9_2p()
+        self._t9_uptime = BuffUptimeAnalyzer(
+            fight_duration,
+            buff_tracker,
+            ignore_windows,
+            "Unholy Might",
+        )
+
+    def add_event(self, event):
+        if not self._has_2p:
+            return
+
+        self._t9_uptime.add_event(event)
+
+    def report(self):
+        if not self._has_2p:
+            return {}
+
+        return {
+            "t9_uptime": self._t9_uptime.uptime(),
+            "t9_max_uptime": self._items.t9_max_uptime(),
+        }
+
+
+class SigilUptimeAnalyzer(BaseAnalyzer):
+    def __init__(
+        self,
+        fight_duration,
+        buff_tracker: BuffTracker,
+        items: ItemPreprocessor,
+        ignore_windows,
+    ):
+        self._fight_duration = fight_duration
+        self._sigil_uptime = (
+            BuffUptimeAnalyzer(
+                fight_duration,
+                buff_tracker,
+                ignore_windows,
+                items.sigil.buff_name,
+            )
+            if items.sigil
+            else None
+        )
+        self._items = items
+
+    def add_event(self, event):
+        if not self._sigil_uptime:
+            return
+
+        self._sigil_uptime.add_event(event)
+
+    def report(self):
+        if not self._sigil_uptime:
+            return {}
+
+        return {
+            "sigil_uptime": self._sigil_uptime.uptime(),
+            "sigil_max_uptime": self._items.sigil.max_uptime,
+            "sigil_name": self._items.sigil.name,
+        }
+
+
+class BuffUptimeAnalyzer(BaseAnalyzer):
+    def __init__(
+        self,
+        end_time,
+        buff_tracker: BuffTracker,
+        ignore_windows,
+        buff_names,
+        start_time=0,
+        max_duration=None,
+    ):
+        self._start_time = start_time
+        self._end_time = end_time
+        self._max_duration = max_duration
+        self._buff_tracker = buff_tracker
+        self._ignore_windows = ignore_windows
+
+        if isinstance(buff_names, set):
+            self._buff_names = buff_names
+        else:
+            self._buff_names = {buff_names}
+
+    def _get_windows(self):
+        for buff_name in self._buff_names:
+            for window in self._buff_tracker.get_windows(buff_name):
+                yield window
+
+    def set_start_time(self, start_time):
+        self._start_time = start_time
+
+    def _clamp_windows(self, windows):
+        clamped_windows = []
+
+        for i, window in enumerate(windows):
+            if not range_overlap(
+                (window.start, window.end), (self._start_time, self._end_time)
+            ):
+                continue
+
+            clamped_window = Window(window.start, window.end)
+            if window.end > self._end_time:
+                clamped_window.end = self._end_time
+            if window.start < self._start_time:
+                clamped_window.start = self._start_time
+            clamped_windows.append(clamped_window)
+
+        return clamped_windows
+
+    def uptime(self):
+        windows = list(self._get_windows())
+        windows = self._clamp_windows(windows)
+        ignore_windows = self._clamp_windows(self._ignore_windows)
+        total_duration = self._end_time - self._start_time
+
+        return min(
+            1,
+            calculate_uptime(
+                windows, ignore_windows, total_duration, self._max_duration
+            ),
+        )
+
+    def score(self):
+        return self.uptime()
 
 
 class CoreAnalysisScorer(AnalysisScorer):
@@ -1126,7 +1261,7 @@ class CoreAnalysisConfig:
     show_procs = False
     show_speed = False
 
-    def get_analyzers(self, fight: Fight, buff_tracker_, dead_zone_analyzer, trinkets):
+    def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, items):
         return [
             GCDAnalyzer(fight.source.id),
             RPAnalyzer(),
@@ -1134,7 +1269,13 @@ class CoreAnalysisConfig:
             BombAnalyzer(fight.duration),
             HyperspeedAnalyzer(fight.duration),
             MeleeUptimeAnalyzer(fight.duration, dead_zone_analyzer.get_dead_zones()),
-            TrinketAnalyzer(fight.duration, trinkets),
+            TrinketAnalyzer(fight.duration, items),
+            T9UptimeAnalyzer(
+                fight.duration, buff_tracker, items, dead_zone_analyzer.get_dead_zones()
+            ),
+            SigilUptimeAnalyzer(
+                fight.duration, buff_tracker, items, dead_zone_analyzer.get_dead_zones()
+            ),
         ]
 
     def get_scorer(self, analyzers):

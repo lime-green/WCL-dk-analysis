@@ -7,7 +7,7 @@ from analysis.core_analysis import (
 from analysis.frost_analysis import (
     FrostAnalysisConfig,
 )
-from analysis.trinkets import TrinketPreprocessor
+from analysis.items import ItemPreprocessor
 from analysis.unholy_analysis import UnholyAnalysisConfig
 from console_table import EventsTable, SHOULD_PRINT
 from report import Fight, Report
@@ -53,20 +53,20 @@ class Analyzer:
         buff_tracker = self._get_buff_tracker()
         source_id = self._fight.source.id
         pet_analyzer = PetNameDetector()
-        trinkets = self._get_trinket_preprocessor()
+        items = self._get_item_preprocessor()
 
         for event in self._events:
             if event["sourceID"] == source_id or event["targetID"] == source_id:
                 dead_zone_analyzer.preprocess_event(event)
                 buff_tracker.preprocess_event(event)
+                items.preprocess_event(event)
             pet_analyzer.preprocess_event(event)
-            trinkets.preprocess_event(event)
 
         for event in self._events:
             dead_zone_analyzer.decorate_event(event)
             buff_tracker.decorate_event(event)
             pet_analyzer.decorate_event(event)
-            trinkets.decorate_event(event)
+            items.decorate_event(event)
 
         return dead_zone_analyzer
 
@@ -75,12 +75,12 @@ class Analyzer:
             self._dead_zone_analyzer = DeadZoneAnalyzer(self._fight)
         return self._dead_zone_analyzer
 
-    def _get_trinket_preprocessor(self):
-        if not hasattr(self, "_trinket_preprocessor"):
-            self._trinket_preprocessor = TrinketPreprocessor(
+    def _get_item_preprocessor(self):
+        if not hasattr(self, "_item_preprocessor"):
+            self._item_preprocessor = ItemPreprocessor(
                 self._fight.get_combatant_info(self._fight.source.id)
             )
-        return self._trinket_preprocessor
+        return self._item_preprocessor
 
     def _get_buff_tracker(self):
         if self._buff_tracker is None:
@@ -247,7 +247,7 @@ class Analyzer:
                 self._fight,
                 buff_tracker,
                 self._get_dead_zone_analyzer(),
-                self._get_trinket_preprocessor(),
+                self._get_item_preprocessor(),
             )
         )
         analyzers.append(self._analysis_config.get_scorer(analyzers))
