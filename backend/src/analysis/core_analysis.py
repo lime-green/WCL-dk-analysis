@@ -1123,6 +1123,18 @@ class T9UptimeAnalyzer(BaseAnalyzer):
             "t9_max_uptime": self._items.t9_max_uptime(),
         }
 
+    def score(self):
+        if not self._has_2p:
+            return 0
+
+        return self._t9_uptime.score() / self._items.t9_max_uptime()
+
+    def score_weight(self):
+        if not self._has_2p:
+            return 0
+
+        return 2
+
 
 class SigilUptimeAnalyzer(BaseAnalyzer):
     def __init__(
@@ -1160,6 +1172,18 @@ class SigilUptimeAnalyzer(BaseAnalyzer):
             "sigil_max_uptime": self._items.sigil.max_uptime,
             "sigil_name": self._items.sigil.name,
         }
+
+    def score(self):
+        if not self._sigil_uptime:
+            return 0
+
+        return self._sigil_uptime.score() / self._items.sigil.max_uptime
+
+    def score_weight(self):
+        if not self._sigil_uptime:
+            return 0
+
+        return 2
 
 
 class BuffUptimeAnalyzer(BaseAnalyzer):
@@ -1246,6 +1270,12 @@ class CoreAnalysisScorer(AnalysisScorer):
             },
             TrinketAnalyzer: {
                 "weight": lambda ta: ta.num_on_use_trinkets,
+            },
+            T9UptimeAnalyzer: {
+                "weight": lambda t9a: t9a.score_weight(),
+            },
+            SigilUptimeAnalyzer: {
+                "weight": lambda sa: sa.score_weight(),
             },
         }
 

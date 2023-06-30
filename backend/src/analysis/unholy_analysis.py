@@ -17,6 +17,8 @@ from analysis.core_analysis import (
     MeleeUptimeAnalyzer,
     TrinketAnalyzer,
     BuffUptimeAnalyzer,
+    SigilUptimeAnalyzer,
+    T9UptimeAnalyzer,
 )
 from analysis.items import ItemPreprocessor
 from report import Fight
@@ -603,24 +605,6 @@ class ArmyAnalyzer(BaseAnalyzer):
         )
 
 
-class T9UptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, buff_tracker: BuffTracker, ignore_windows):
-        self._buff_tracker = buff_tracker
-        self._ignore_windows = ignore_windows
-
-    def uptime(self):
-        windows = self._buff_tracker.get_windows("T9 2pc")
-        return calculate_uptime(windows, self._ignore_windows)
-
-    def score(self):
-        return self.uptime()
-
-    def report(self):
-        return {
-            "t9_2pc_uptime": self.uptime(),
-        }
-
-
 class UnholyAnalysisScorer(AnalysisScorer):
     def get_score_weights(self):
         exponent_factor = 1.5
@@ -683,6 +667,12 @@ class UnholyAnalysisScorer(AnalysisScorer):
             },
             ArmyAnalyzer: {
                 "weight": 3,
+            },
+            T9UptimeAnalyzer: {
+                "weight": lambda t9a: t9a.score_weight(),
+            },
+            SigilUptimeAnalyzer: {
+                "weight": lambda sa: sa.score_weight(),
             },
         }
 
