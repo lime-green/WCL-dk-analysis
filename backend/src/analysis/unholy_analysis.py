@@ -131,6 +131,15 @@ class GargoyleWindow(Window):
         self._gargoyle_first_cast = None
         self.snapshotted_greatness = buff_tracker.is_active("Greatness", start)
         self.snapshotted_fc = buff_tracker.is_active("Unholy Strength", start)
+        self.snapshotted_sigil = (
+            buff_tracker.is_active(items.sigil.buff_name, start)
+            if items.sigil
+            else None
+        )
+        self.snapshotted_t9 = (
+            buff_tracker.is_active("Unholy Might", start) if items.has_t9_2p() else None
+        )
+
         self._up_uptime = UnholyPresenceUptimeAnalyzer(
             self.end,
             buff_tracker,
@@ -249,7 +258,7 @@ class GargoyleWindow(Window):
     def score(self):
         return ScoreWeight.calculate(
             ScoreWeight(int(self.snapshotted_greatness), 2),
-            ScoreWeight(int(self.snapshotted_fc), 2),
+            ScoreWeight(int(self.snapshotted_fc), 3),
             # Lower weight since this only lasts 12s
             ScoreWeight(self.hyperspeed_uptime, 2),
             ScoreWeight(self.up_uptime, 4),
@@ -264,6 +273,16 @@ class GargoyleWindow(Window):
                 sum([t["uptime"].uptime() for t in self.trinket_uptimes])
                 / (len(self.trinket_uptimes) if self.trinket_uptimes else 1),
                 len(self.trinket_uptimes) * 2,
+            ),
+            ScoreWeight(
+                int(self.snapshotted_sigil)
+                if self.snapshotted_sigil is not None
+                else 0,
+                2 if self.snapshotted_sigil is not None else 0,
+            ),
+            ScoreWeight(
+                int(self.snapshotted_t9) if self.snapshotted_t9 is not None else 0,
+                2 if self.snapshotted_t9 is not None else 0,
             ),
         )
 
@@ -331,6 +350,9 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "damage": window.total_damage,
                         "snapshotted_greatness": window.snapshotted_greatness,
                         "snapshotted_fc": window.snapshotted_fc,
+                        "snapshotted_sigil": window.snapshotted_sigil,
+                        "snapshotted_t9": window.snapshotted_t9,
+                        "sigil_name": self._items.sigil and self._items.sigil.name,
                         "unholy_presence_uptime": window.up_uptime,
                         "bloodlust_uptime": window.bl_uptime,
                         "num_casts": window.num_casts,

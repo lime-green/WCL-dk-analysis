@@ -54,6 +54,8 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
                   )
                 })}
                 {booleanCheck(window.snapshotted_fc, "You snapshotted Fallen Crusader", "You did not snapshot Fallen Crusader")}
+                {window.snapshotted_sigil !== null && booleanCheck(window.snapshotted_sigil, `You snapshotted ${window.sigil_name}`, `You did not snapshot ${window.sigil_name}`)}
+                {window.snapshotted_t9 !== null && booleanCheck(window.snapshotted_sigil, "You snapshotted Unholy Might (T9 2p)", "You did not snapshot Unholy Might (T9 2p)")}
               </div>
             )
           })}
