@@ -70,7 +70,12 @@ class AnalysisScorer(BaseAnalyzer):
             if callable(weight):
                 weight = weight(analyzer)
 
-            score_weights.append(ScoreWeight(score, weight))
+            try:
+                score_weights.append(ScoreWeight(score, weight))
+            except:
+                raise ValueError(
+                    f"Invalid score weight for {analyzer_cls.__name__}: {score} {weight}"
+                )
 
         return ScoreWeight.calculate(*score_weights)
 

@@ -1127,7 +1127,7 @@ class T9UptimeAnalyzer(BaseAnalyzer):
         if not self._has_2p:
             return 0
 
-        return self._t9_uptime.score() / self._items.t9_max_uptime()
+        return min(self._t9_uptime.score() / self._items.t9_max_uptime(), 1)
 
     def score_weight(self):
         if not self._has_2p:
@@ -1177,7 +1177,7 @@ class SigilUptimeAnalyzer(BaseAnalyzer):
         if not self._sigil_uptime:
             return 0
 
-        return self._sigil_uptime.score() / self._items.sigil.max_uptime
+        return min(self._sigil_uptime.score() / self._items.sigil.max_uptime, 1)
 
     def score_weight(self):
         if not self._sigil_uptime:
