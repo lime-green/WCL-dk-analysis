@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List
 
 from analysis.base import (
@@ -25,18 +26,57 @@ from report import Fight
 
 
 class DebuffUptimeAnalyzer(BaseAnalyzer):
+    class WindowManager:
+        def __init__(self, end_time):
+            self._windows_by_target = defaultdict(list)
+            self._window_by_target = {}
+            self._end_time = end_time
+
+        def add_window(self, target, start, end=None):
+            window = Window(start, end)
+            self._window_by_target[target] = window
+            self._windows_by_target[target].append(window)
+
+        def end_window(self, target, end):
+            window = self._window_by_target.get(target)
+            if window:
+                window.end = end
+
+        def has_active_window(self, target):
+            window = self._window_by_target.get(target)
+            return window and window.end is None
+
+        def coalesce(self):
+            windows = [
+                window
+                for windows in sorted(self._windows_by_target.values())
+                for window in windows
+            ]
+            if not windows:
+                return windows
+
+            for window in windows:
+                if window.end is None:
+                    window.end = self._end_time
+
+            coalesced_windows = [windows[0].copy()]
+            for window in windows[1:]:
+                if window.start <= coalesced_windows[-1].end:
+                    coalesced_windows[-1].end = window.end
+                else:
+                    coalesced_windows.append(window.copy())
+            return coalesced_windows
+
     def __init__(self, end_time, debuff_name, ignore_windows):
-        self._windows = []
-        self._window = None
         self._debuff_name = debuff_name
         self._end_time = end_time
         self._ignore_windows = ignore_windows
-
-    def _add_window(self, start, end=None):
-        self._window = Window(start, end)
-        self._windows.append(self._window)
+        self._wm = self.WindowManager(end_time)
 
     def add_event(self, event):
+        if not event.get("target_is_boss"):
+            return
+
         if event["type"] not in ("applydebuff", "removedebuff", "refreshdebuff"):
             return
 
@@ -44,18 +84,16 @@ class DebuffUptimeAnalyzer(BaseAnalyzer):
             return
 
         if event["type"] in ("applydebuff", "refreshdebuff"):
-            if not self._window or self._window.end is not None:
-                self._add_window(event["timestamp"])
-        elif event["type"] == "removedebuff" and self._window:
-            end = event["timestamp"]
-            self._window.end = end
+            if not self._wm.has_active_window(event["target"]):
+                self._wm.add_window(event["target"], event["timestamp"])
+        elif event["type"] == "removedebuff":
+            self._wm.end_window(event["target"], event["timestamp"])
 
     def uptime(self):
-        if self._windows and self._windows[-1].end is None:
-            self._windows[-1].end = self._end_time
+        windows = self._wm.coalesce()
 
         return calculate_uptime(
-            self._windows,
+            windows,
             self._ignore_windows,
             self._end_time,
         )

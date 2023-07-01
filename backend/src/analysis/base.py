@@ -115,6 +115,12 @@ class Window:
             return self.start <= timestamp
         return self.start <= timestamp <= self.end
 
+    def copy(self):
+        return Window(self.start, self.end)
+
+    def __lt__(self, other):
+        return self.start < other.start
+
     def __repr__(self):
         return f"<Window start={self.start} end={self.end}>"
 
