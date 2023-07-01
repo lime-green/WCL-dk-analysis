@@ -643,6 +643,29 @@ class ArmyAnalyzer(BaseAnalyzer):
         )
 
 
+class BloodTapAnalyzer(BaseAnalyzer):
+    def __init__(self, fight_end_time):
+        self._num_used = 0
+        self._fight_end_time = fight_end_time
+
+    @property
+    def max_usages(self):
+        return max(1 + (self._fight_end_time - 10000) // 60000, self._num_used)
+
+    def add_event(self, event):
+        if event["type"] == "cast" and event["ability"] == "Blood Tap":
+            self._num_used += 1
+
+    def score(self):
+        return self._num_used / self.max_usages
+
+    def report(self):
+        return {
+            "blood_tap_usages": self._num_used,
+            "blood_tap_max_usages": self.max_usages,
+        }
+
+
 class UnholyAnalysisScorer(AnalysisScorer):
     def get_score_weights(self):
         exponent_factor = 1.5
@@ -712,6 +735,9 @@ class UnholyAnalysisScorer(AnalysisScorer):
             SigilUptimeAnalyzer: {
                 "weight": lambda sa: sa.score_weight(),
             },
+            BloodTapAnalyzer: {
+                "weight": 1,
+            },
         }
 
     def report(self):
@@ -740,6 +766,7 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
                 fight.duration, buff_tracker, dead_zones, gargoyle.windows
             ),
             ArmyAnalyzer(buff_tracker, items),
+            BloodTapAnalyzer(fight.end_time),
         ]
 
     def get_scorer(self, analyzers):

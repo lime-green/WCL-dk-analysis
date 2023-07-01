@@ -300,35 +300,6 @@ const Summary = () => {
     )
   }, [])
 
-  const formatRaiseDead = useCallback(raiseDead => {
-    const numActual = raiseDead.num_usages
-    const numPossible = raiseDead.possible_usages
-    const score = numActual / numPossible
-    const X = <i className="fa fa-times red" aria-hidden="true"></i>
-    const Check = <i className="fa fa-check green" aria-hidden="true"></i>
-    let Icon = X
-
-    let color = "red"
-    if (score === 1) {
-      color = "green"
-      Icon = Check
-    } else if (score >= 0.5) {
-      color = "yellow"
-    } else if (score > 0) {
-      color = "orange"
-    }
-
-    return (
-      <div className={"raise-dead-analysis"}>
-        {Icon}
-        You summoned your Ghoul <span className={color}>
-          {numActual} of {numPossible}
-        </span>{" "}
-        possible times
-      </div>
-    )
-  }, [])
-
   const Tooltip = ({ tooltipText }) => {
     const [hover, setHover] = useState(false)
 
@@ -430,9 +401,10 @@ const Summary = () => {
           {summary.blood_plague_uptime !== undefined && formatUpTime(summary.blood_plague_uptime, "Blood Plague")}
           {summary.frost_fever_uptime !== undefined && formatUpTime(summary.frost_fever_uptime, "Frost Fever")}
           {summary.blood_presence_uptime !== undefined && formatUpTime(summary.blood_presence_uptime, "Blood Presence (outside of Gargoyle)")}
+          {summary.blood_tap_usages !== undefined && formatUsage(summary.blood_tap_usages, summary.blood_tap_max_usages, "Blood Tap")}
           {summary.bone_shield_uptime !== undefined && formatUpTime(summary.bone_shield_uptime, "Bone Shield", true)}
           {summary.diseases_dropped && formatDiseases(summary.diseases_dropped)}
-          {summary.raise_dead_usage && formatRaiseDead(summary.raise_dead_usage)}
+          {summary.raise_dead_usage && formatUsage(summary.raise_dead_usage.num_usages, summary.raise_dead_usage.possible_usages, "Raise Dead")}
           {summary.howling_blast_bad_usages && formatHowlingBlast(summary.howling_blast_bad_usages)}
           {summary.runic_power && formatRunicPower(summary.runic_power)}
           {summary.rime && formatRime(summary.rime)}
