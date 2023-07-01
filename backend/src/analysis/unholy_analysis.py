@@ -109,7 +109,7 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
 
     @property
     def max_uptime(self):
-        return 0.5 if self._has_sigil else 1
+        return 0.45 if self._has_sigil else 1
 
     def score(self):
         return min(1, self.uptime() / self.max_uptime)
