@@ -745,7 +745,7 @@ class UnholyAnalysisScorer(AnalysisScorer):
                 "weight": 1,
             },
             BloodPresenceUptimeAnalyzer: {
-                "weight": 3,
+                "weight": 1,
                 "exponent_factor": exponent_factor,
             },
             GhoulAnalyzer: {
