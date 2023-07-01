@@ -51,13 +51,26 @@ class TrinketPreprocessor(BasePreprocessor):
         APTrinket("Death's Choice", 47303, "Paragon", 15, 45),
         APTrinket("Death's Verdict", 47131, "Paragon", 15, 45),
         APTrinket("Death's Verdict", 47115, "Paragon", 15, 45),
+        APTrinket("Victor's Call", 47725, "Rising Fury", 20, 120, on_use=True),
+        APTrinket("Victor's Call", 47948, "Rising Fury", 20, 120, on_use=True),
+        APTrinket(
+            "Vengeance of the Forsaken", 47881, "Rising Fury", 20, 120, on_use=True
+        ),
+        APTrinket(
+            "Vengeance of the Forsaken", 48020, "Rising Fury", 20, 120, on_use=True
+        ),
+        APTrinket("Mark of Supremacy", 47734, "Rage", 20, 120, on_use=True),
         HasteTrinket(
             "Mark of Norgannon", 40531, "Mark of Norgannon", 20, 120, on_use=True
         ),
         HasteTrinket("Comet's Trail", 45609, "Comet's Trail", 10, 45),
         HasteTrinket("Meteorite Whetstone", 37390, "Meteorite Whetstone", 10, 45),
+        HasteTrinket(
+            "Shard of the Crystal Heart", 48722, "Celerity", 20, 120, on_use=True
+        ),
     ]
     TRINKET_MAP = {trinket.item_id: trinket for trinket in TRINKETS}
+    TRINKEY_MAP_BY_BUFF_NAME = {trinket.buff_name: trinket for trinket in TRINKETS}
 
     def __init__(self, combatant_info):
         self._trinkets = self._parse_trinkets(combatant_info)
@@ -69,17 +82,22 @@ class TrinketPreprocessor(BasePreprocessor):
         trinkets = []
 
         for item in combatant_info.get("gear", []):
-            trinket = self._parse_trinket(item)
+            trinket = self.TRINKET_MAP.get(item["id"])
             if trinket:
                 trinket.icon = item["item_icon"]
                 trinkets.append(trinket)
         return trinkets
 
-    def _parse_trinket(self, item):
-        return self.TRINKET_MAP.get(item["id"])
-
     def preprocess_event(self, event):
-        pass
+        if (
+            event["type"] == "applybuff"
+            and event["ability"] in self.TRINKEY_MAP_BY_BUFF_NAME
+        ):
+            trinket = self.TRINKEY_MAP_BY_BUFF_NAME[event["ability"]]
+
+            if trinket not in self._trinkets:
+                trinket.icon = event["ability_icon"]
+                self._trinkets.append(trinket)
 
     def has_trinket(self, buff_name):
         return buff_name in self._trinkets_by_buff_name
