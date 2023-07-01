@@ -98,6 +98,9 @@ class TrinketPreprocessor(BasePreprocessor):
             if trinket not in self._trinkets:
                 trinket.icon = event["ability_icon"]
                 self._trinkets.append(trinket)
+                self._trinkets_by_buff_name = {
+                    trinket.buff_name: trinket for trinket in self._trinkets
+                }
 
     def has_trinket(self, buff_name):
         return buff_name in self._trinkets_by_buff_name
