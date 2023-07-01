@@ -52,7 +52,7 @@ class DeadZoneAnalyzer(BasePreprocessor):
         self._is_hard_mode = self._fight.is_hard_mode
 
     def _check_boss_events_occur(self, event):
-        if event.get("source_is_boss") or (event.get("target_is_boss") and event["ability"] in self.MELEE_ABILITIES):
+        if event.get("source_is_boss") or (event.get("target_is_boss") and event["type"] == "cast"):
             if event["timestamp"] - self._last_timestamp > 7000:
                 dead_zone = self.DeadZone(self._last_timestamp, event["timestamp"])
                 self._dead_zones.append(dead_zone)

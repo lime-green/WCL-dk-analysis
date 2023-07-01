@@ -502,28 +502,11 @@ class Fight:
                             event["runic_power"] = next_event["runic_power"]
                             break
 
-                event = {
-                    "timestamp": event["timestamp"],
-                    "ability": event["ability"],
-                    "abilityGameID": event["abilityGameID"],
-                    "ability_icon": event["ability_icon"],
-                    "ability_type": event["ability_type"],
-                    "type": event["type"],
-                    "source": event["source"],
-                    "sourceID": event["sourceID"],
-                    "target": event["target"],
-                    "targetID": event["targetID"],
-                    "target_dies_at": event["target_dies_at"],
-                    "rune_cost": event["rune_cost"],
-                    "runes_used": event["runes_used"],
-                    "runic_power": event["runic_power"],
-                    "runic_power_waste": event.get("runic_power_waste", 0),
-                    "modifies_runes": event["modifies_runes"],
-                    "num_targets": event.get("num_targets", 0),
-                    "is_owner_pet_source": event["is_owner_pet_source"],
-                    "is_owner_pet_target": event["is_owner_pet_target"],
+                event.update(
+                    runic_power_waste=event.get("runic_power_waste", 0),
+                    num_targets=event.get("num_targets", 0),
                     **extra,
-                }
+                )
             events.append(event)
         return events
 
