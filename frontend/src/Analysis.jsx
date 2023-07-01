@@ -420,10 +420,10 @@ const Summary = () => {
         <div className="analysis-section">
           <h3>Rotation</h3>
           {summary.obliterate && formatCPM(summary.obliterate.cpm, summary.obliterate.target_cpm, "Obliterate")}
-          {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay")}
+          {summary.dnd !== undefined && formatUpTime(summary.dnd.uptime, "Death and Decay", false, summary.dnd.max_uptime)}
           {summary.desolation_uptime !== undefined && formatUpTime(summary.desolation_uptime, "Desolation")}
           {summary.sigil_uptime !== undefined && formatUpTime(summary.sigil_uptime, summary.sigil_name, false, summary.sigil_max_uptime)}
-          {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy")}
+          {summary.ghoul_frenzy_uptime !== undefined && formatUpTime(summary.ghoul_frenzy_uptime, "Ghoul Frenzy", false, summary.ghoul_frenzy_max_uptime)}
           {summary.t9_uptime !== undefined && formatUpTime(summary.t9_uptime, "Unholy Might (T9 2p)", false, summary.t9_max_uptime)}
           {summary.melee_uptime !== undefined && formatUpTime(summary.melee_uptime, "Melee")}
           {summary.unbreakable_armor && formatUA(summary.unbreakable_armor)}

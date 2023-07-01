@@ -72,7 +72,7 @@ class AnalysisScorer(BaseAnalyzer):
 
             try:
                 score_weights.append(ScoreWeight(score, weight))
-            except:
+            except Exception:
                 raise ValueError(
                     f"Invalid score weight for {analyzer_cls.__name__}: {score} {weight}"
                 )

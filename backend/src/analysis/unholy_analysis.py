@@ -103,11 +103,19 @@ class DesolationAnalyzer(BuffUptimeAnalyzer):
 class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
     INCLUDE_PET_EVENTS = True
 
-    def __init__(self, duration, buff_tracker, ignore_windows):
+    def __init__(self, duration, buff_tracker, ignore_windows, items):
+        self._has_sigil = items.sigil is not None
         super().__init__(duration, buff_tracker, ignore_windows, "Ghoul Frenzy")
 
+    @property
+    def max_uptime(self):
+        return 0.5 if self._has_sigil else 1
+
     def report(self):
-        return {"ghoul_frenzy_uptime": self.uptime()}
+        return {
+            "ghoul_frenzy_uptime": self.uptime(),
+            "ghoul_frenzy_max_uptime": self.max_uptime,
+        }
 
 
 class UnholyPresenceUptimeAnalyzer(BuffUptimeAnalyzer):
@@ -385,11 +393,12 @@ class GargoyleAnalyzer(BaseAnalyzer):
 
 
 class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
-    def __init__(self, fight_duration, ignore_windows):
+    def __init__(self, fight_duration, ignore_windows, items):
         self._dnd_ticks = 0
         self._last_tick_time = None
         self._fight_duration = fight_duration
         self._ignore_windows = ignore_windows
+        self._has_sigil = items.sigil is not None
 
     def _is_in_ignore_window(self, timestamp):
         for window in self._ignore_windows:
@@ -421,6 +430,7 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
     def report(self):
         return {
             "dnd": {
+                "max_uptime": 0.6 if self._has_sigil else 1,
                 "uptime": self.uptime(),
                 "score": self.score(),
             }
@@ -714,11 +724,11 @@ class UnholyAnalysisConfig(CoreAnalysisConfig):
         return super().get_analyzers(fight, buff_tracker, dead_zone_analyzer, items) + [
             BoneShieldAnalyzer(fight.duration, buff_tracker, dead_zones),
             DesolationAnalyzer(fight.duration, buff_tracker, dead_zones),
-            GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones),
+            GhoulFrenzyAnalyzer(fight.duration, buff_tracker, dead_zones, items),
             gargoyle,
             BloodPlagueAnalyzer(fight.duration, dead_zones),
             FrostFeverAnalyzer(fight.duration, dead_zones),
-            DeathAndDecayUptimeAnalyzer(fight.duration, dead_zones),
+            DeathAndDecayUptimeAnalyzer(fight.duration, dead_zones, items),
             GhoulAnalyzer(fight.duration, dead_zones),
             BloodPresenceUptimeAnalyzer(
                 fight.duration, buff_tracker, dead_zones, gargoyle.windows
