@@ -7,7 +7,7 @@ from analysis.core_analysis import (
 from analysis.frost_analysis import (
     FrostAnalysisConfig,
 )
-from analysis.items import ItemPreprocessor
+from analysis.items import ItemPreprocessor, TrinketPreprocessor
 from analysis.unholy_analysis import UnholyAnalysisConfig
 from console_table import EventsTable, SHOULD_PRINT
 from report import Fight, Report
@@ -120,7 +120,10 @@ class Analyzer:
                     "Pyrite Infusion",
                     "Fury of the Five Flights",
                     "Desolation",
-                },
+                    "Unholy Force",  # Sigil
+                    "Unholy Might",  # T9 2p
+                }
+                | set(TrinketPreprocessor.TRINKEY_MAP_BY_BUFF_NAME.keys()),
                 self._fight.duration,
                 starting_auras,
                 self._detect_spec(),
