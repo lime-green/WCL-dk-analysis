@@ -558,6 +558,9 @@ class Fight:
             normalized_event["source"] = self._report.get_actor_name(
                 normalized_event["sourceID"]
             )
+            normalized_event["source_is_boss"] = self._report.get_is_boss_actor(
+                normalized_event["sourceID"]
+            )
         if "targetID" in event:
             normalized_event["target"] = self._report.get_actor_name(
                 normalized_event["targetID"]
