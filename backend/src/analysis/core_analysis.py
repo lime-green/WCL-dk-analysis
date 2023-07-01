@@ -45,12 +45,13 @@ class DeadZoneAnalyzer(BasePreprocessor):
             "Razorscale": self._check_razorscale,
             "Algalon the Observer": self._check_algalon,
             "General Vezax": self._check_vezax,
-            "The Northrend Beasts": self._check_northrend_beasts,
+            "The Northrend Beasts": self._check_boss_events_occur,
+            "Anub'arak": self._check_boss_events_occur,
         }.get(self._fight.encounter.name)
         self._encounter_name = self._fight.encounter.name
         self._is_hard_mode = self._fight.is_hard_mode
 
-    def _check_northrend_beasts(self, event):
+    def _check_boss_events_occur(self, event):
         if event.get("source_is_boss") or (event.get("target_is_boss") and event["ability"] in self.MELEE_ABILITIES):
             if event["timestamp"] - self._last_timestamp > 7000:
                 dead_zone = self.DeadZone(self._last_timestamp, event["timestamp"])
