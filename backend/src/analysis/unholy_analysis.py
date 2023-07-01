@@ -111,6 +111,9 @@ class GhoulFrenzyAnalyzer(BuffUptimeAnalyzer):
     def max_uptime(self):
         return 0.5 if self._has_sigil else 1
 
+    def score(self):
+        return min(1, self.uptime() / self.max_uptime)
+
     def report(self):
         return {
             "ghoul_frenzy_uptime": self.uptime(),
@@ -425,14 +428,17 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
         return min(1, self._dnd_ticks / max_ticks)
 
     def score(self):
-        return self.uptime()
+        return min(1, self.uptime() / self.max_uptime)
+
+    @property
+    def max_uptime(self):
+        return 0.6 if self._has_sigil else 1
 
     def report(self):
         return {
             "dnd": {
-                "max_uptime": 0.6 if self._has_sigil else 1,
+                "max_uptime": self.max_uptime,
                 "uptime": self.uptime(),
-                "score": self.score(),
             }
         }
 
