@@ -95,7 +95,7 @@ class TrinketPreprocessor(BasePreprocessor):
         ):
             trinket = self.TRINKEY_MAP_BY_BUFF_NAME[event["ability"]]
 
-            if trinket not in self._trinkets:
+            if event["ability"] not in self._trinkets_by_buff_name:
                 trinket.icon = event["ability_icon"]
                 self._trinkets.append(trinket)
                 self._trinkets_by_buff_name = {
