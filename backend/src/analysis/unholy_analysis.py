@@ -47,11 +47,11 @@ class DebuffUptimeAnalyzer(BaseAnalyzer):
             return window and window.end is None
 
         def coalesce(self):
-            windows = [
+            windows = sorted([
                 window
                 for windows in sorted(self._windows_by_target.values())
                 for window in windows
-            ]
+            ])
             if not windows:
                 return windows
 
