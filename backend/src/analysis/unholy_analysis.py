@@ -437,9 +437,11 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
     def __init__(self, fight_duration, ignore_windows, items):
         self._dnd_ticks = 0
         self._last_tick_time = None
-        self._fight_duration = fight_duration
         self._ignore_windows = ignore_windows
         self._has_sigil = items.sigil is not None
+
+        ignore_duration = sum(window.duration for window in self._ignore_windows)
+        self._fight_duration = fight_duration - ignore_duration
 
     def _is_in_ignore_window(self, timestamp):
         for window in self._ignore_windows:
@@ -456,21 +458,15 @@ class DeathAndDecayUptimeAnalyzer(BaseAnalyzer):
                 self._dnd_ticks += 1
                 self._last_tick_time = event["timestamp"]
 
+    @property
+    def max_uptime(self):
+        return 11/18 if self._has_sigil else 11/15
+
     def uptime(self):
-        fight_duration = self._fight_duration
-
-        for window in self._ignore_windows:
-            fight_duration -= window.duration
-
-        max_ticks = fight_duration * 11 / 15 // 1000
-        return min(1, self._dnd_ticks / max_ticks)
+        return self._dnd_ticks / (self._fight_duration // 1000)
 
     def score(self):
         return min(1, self.uptime() / self.max_uptime)
-
-    @property
-    def max_uptime(self):
-        return 0.6 if self._has_sigil else 1
 
     def report(self):
         return {
