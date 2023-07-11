@@ -74,9 +74,6 @@ class DebuffUptimeAnalyzer(BaseAnalyzer):
         self._wm = self.WindowManager(end_time)
 
     def add_event(self, event):
-        if not event.get("target_is_boss"):
-            return
-
         if event["type"] not in ("applydebuff", "removedebuff", "refreshdebuff"):
             return
 
