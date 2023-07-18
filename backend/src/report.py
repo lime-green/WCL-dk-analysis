@@ -39,6 +39,7 @@ HIT_TYPES = {
 }
 
 MISS_EVENTS = {"MISS", "DODGE", "PARRY", "IMMUNE", "REFLECT", "EVADE", "RESIST_FULL"}
+CRIT_EVENTS = {"CRIT", "BLOCKED_CRIT", "RESIST_PARTIAL_CRIT"}
 
 NO_RUNES = {"blood": 0, "frost": 0, "unholy": 0}
 
@@ -566,6 +567,7 @@ class Fight:
         if "hitType" in event:
             normalized_event["hitType"] = HIT_TYPES[event["hitType"]]
             normalized_event["is_miss"] = normalized_event["hitType"] in MISS_EVENTS
+            normalized_event["is_crit"] = normalized_event["hitType"] in CRIT_EVENTS
         if event["type"] == "cast":
             normalized_event["rune_cost"] = {**NO_RUNES}
             normalized_event["runes_used"] = {**NO_RUNES}
