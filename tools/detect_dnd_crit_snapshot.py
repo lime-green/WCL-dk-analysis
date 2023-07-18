@@ -65,6 +65,22 @@ async def get_report(report_id, fight_id, source_id):
         return await client.query(report_id, fight_id, source_id)
 
 
+class CritTickCounter:
+    def __init__(self, num_crit, total_ticks):
+        self.num_crit = num_crit
+        self.total_ticks = total_ticks
+
+    def __add__(self, other):
+        return CritTickCounter(
+            self.num_crit + other.num_crit,
+            self.total_ticks + other.total_ticks,
+        )
+
+    @property
+    def crit_rate(self):
+        return self.num_crit / self.total_ticks if self.total_ticks else 0
+
+
 def analyze_fight(fight: Fight):
     events = fight.events
     has_crit_buff = False
@@ -102,12 +118,12 @@ def analyze_fight(fight: Fight):
             elif event["type"] == "cast":
                 snapshotted = has_crit_buff
 
-    snapshot_crit_rate = len([x for x in snapshotted_ticks if x]) / len(snapshotted_ticks) if snapshotted_ticks else 0
-    buffed_crit_rate = len([x for x in buffed_ticks if x]) / len(buffed_ticks) if buffed_ticks else 0
-    unbuffed_crit_rate = len([x for x in unbuffed_ticks if x]) / len(unbuffed_ticks) if unbuffed_ticks else 0
-    unsnapshotted_crit_rate = len([x for x in unsnapshotted_ticks if x]) / len(unsnapshotted_ticks) if unsnapshotted_ticks else 0
-    unsnapshotted_buffed_crit_rate = len([x for x in unsnapshotted_buffed_ticks if x]) / len(unsnapshotted_buffed_ticks) if unsnapshotted_buffed_ticks else 0
-    return snapshot_crit_rate, buffed_crit_rate, unbuffed_crit_rate, unsnapshotted_crit_rate, unsnapshotted_buffed_crit_rate, total_ticks
+    snapshot_crit = CritTickCounter(len([x for x in snapshotted_ticks if x]), len(snapshotted_ticks))
+    buffed_crit = CritTickCounter(len([x for x in buffed_ticks if x]), len(buffed_ticks))
+    unbuffed_crit = CritTickCounter(len([x for x in unbuffed_ticks if x]), len(unbuffed_ticks))
+    unsnapshotted_crit = CritTickCounter(len([x for x in unsnapshotted_ticks if x]), len(unsnapshotted_ticks))
+    unsnapshotted_buffed_crit_rate = CritTickCounter(len([x for x in unsnapshotted_buffed_ticks if x]), len(unsnapshotted_buffed_ticks))
+    return snapshot_crit, buffed_crit, unbuffed_crit, unsnapshotted_crit, unsnapshotted_buffed_crit_rate, total_ticks
 
 
 def detect_dnd_crit_snapshot():
@@ -156,33 +172,34 @@ def detect_dnd_crit_snapshot():
         with open("fight_map.pickle", "wb") as f:
             pickle.dump(fight_map, f)
 
-    running_snapshot_crits = 0
-    running_buffed_crits = 0
-    running_unbuffed_crits = 0
-    running_unsnapshotted_crits = 0
-    running_unsnapshotted_buffed_crits = 0
+    running_snapshot_crits = CritTickCounter(0, 0)
+    running_buffed_crits = CritTickCounter(0, 0)
+    running_unbuffed_crits = CritTickCounter(0, 0)
+    running_unsnapshotted_crits = CritTickCounter(0, 0)
+    running_unsnapshotted_buffed_crits = CritTickCounter(0, 0)
     running_total_ticks = 0
     for fight in fight_map.values():
-        snapshot_crit_rate, buffed_crit_rate, unbuffed_crit_rate, unsnapshotted_crit_rate, unsnapshotted_buffed_crit_rate, total_ticks = analyze_fight(fight)
-        running_snapshot_crits += snapshot_crit_rate * total_ticks
-        running_buffed_crits += buffed_crit_rate * total_ticks
-        running_unbuffed_crits += unbuffed_crit_rate * total_ticks
-        running_unsnapshotted_crits += unsnapshotted_crit_rate * total_ticks
-        running_unsnapshotted_buffed_crits += unsnapshotted_buffed_crit_rate * total_ticks
+        snapshot_crit, buffed_crit, unbuffed_crit, unsnapshotted_crit, unsnapshotted_buffed_crit, total_ticks = analyze_fight(fight)
+        running_snapshot_crits += snapshot_crit
+        running_buffed_crits += buffed_crit
+        running_unbuffed_crits += unbuffed_crit
+        running_unsnapshotted_crits += unsnapshotted_crit
+        running_unsnapshotted_buffed_crits += unsnapshotted_buffed_crit
+
         running_total_ticks += total_ticks
-        print("Snapshot crit rate", snapshot_crit_rate)
-        print("Unsnapshotted crit rate", unsnapshotted_crit_rate)
-        print("Unsnapshotted buffed crit rate", unsnapshotted_buffed_crit_rate)
-        print("Buffed crit rate", buffed_crit_rate)
-        print("Unbuffed crit rate", unbuffed_crit_rate)
+        print("Snapshot crit rate", snapshot_crit.crit_rate)
+        print("Unsnapshotted crit rate", unsnapshotted_crit.crit_rate)
+        print("Unsnapshotted buffed crit rate", unsnapshotted_buffed_crit.crit_rate)
+        print("Buffed crit rate", buffed_crit.crit_rate)
+        print("Unbuffed crit rate", unbuffed_crit.crit_rate)
         print("Total ticks", total_ticks)
 
     print("Overall total ticks: ", running_total_ticks)
-    print("Overall snapshot crit rate", running_snapshot_crits / running_total_ticks)
-    print("Overall unsnapshotted crit rate", running_unsnapshotted_crits / running_total_ticks)
-    print("Overall unsnapshotted buffed crit rate", running_unsnapshotted_buffed_crits / running_total_ticks)
-    print("Overall buffed crit rate", running_buffed_crits / running_total_ticks)
-    print("Overall unbuffed crit rate", running_unbuffed_crits / running_total_ticks)
+    print(f"Overall snapshot crit rate (n={running_snapshot_crits.total_ticks})", running_snapshot_crits.crit_rate)
+    print(f"Overall unsnapshotted crit rate (n={running_unsnapshotted_crits.total_ticks})", running_unsnapshotted_crits.crit_rate)
+    print(f"Overall unsnapshotted buffed crit rate (n={running_unsnapshotted_buffed_crits.total_ticks})", running_unsnapshotted_buffed_crits.crit_rate)
+    print(f"Overall buffed crit rate (n={running_buffed_crits.total_ticks})", running_buffed_crits.crit_rate)
+    print(f"Overall unbuffed crit rate (n={running_unbuffed_crits.total_ticks})", running_unbuffed_crits.crit_rate)
 
 
 if __name__ == "__main__":

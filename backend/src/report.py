@@ -614,9 +614,10 @@ class Fight:
             runic_power_gain = event["resourceChange"] - event["waste"]
             normalized_event["runic_power_gained_ams"] = runic_power_gain * 10
 
-        normalized_event["is_owner_pet_source"] = self._report.is_owner_pet(
-            normalized_event["sourceID"]
-        )
+        if "sourceID" in event:
+            normalized_event["is_owner_pet_source"] = self._report.is_owner_pet(
+                normalized_event["sourceID"]
+            )
         normalized_event["is_owner_pet_target"] = False
         if normalized_event.get("targetID"):
             normalized_event["is_owner_pet_target"] = self._report.is_owner_pet(
