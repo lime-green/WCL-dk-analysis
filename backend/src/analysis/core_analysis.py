@@ -667,7 +667,7 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
                             "start": containing_window.start,
                         }
                     )
-        return sorted(windows, key=lambda x: x["start"])
+        return sorted(windows, key=lambda x: ("Presence" not in x["ability"], x["start"]))
 
     def decorate_event(self, event):
         event["buffs"] = self.get_active_buffs(event["timestamp"])
