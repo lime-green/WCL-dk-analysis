@@ -122,6 +122,9 @@ class Analyzer:
                     "Desolation",
                     "Unholy Force",  # Sigil
                     "Unholy Might",  # T9 2p
+                    "Blood Presence",
+                    "Unholy Presence",
+                    "Frost Presence",
                 }
                 | set(TrinketPreprocessor.TRINKEY_MAP_BY_BUFF_NAME.keys()),
                 self._fight.duration,

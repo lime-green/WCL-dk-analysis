@@ -761,12 +761,16 @@ class GCDAnalyzer(BaseAnalyzer):
         "Wrathstone",
         "Mark of Norgannon",
         "Mind Freeze",
+        "Blood Presence",
+        "Frost Presence",
+        "Unholy Presence",
     }
 
-    def __init__(self, source_id):
+    def __init__(self, source_id, buff_tracker: BuffTracker):
         self._gcds = []
         self._last_event = None
         self._source_id = source_id
+        self._buff_tracker = buff_tracker
 
     def add_event(self, event):
         if not event["type"] == "cast":
@@ -804,9 +808,14 @@ class GCDAnalyzer(BaseAnalyzer):
 
         for timestamp, last_timestamp in self._gcds:
             timestamp_diff = timestamp - last_timestamp
+            assumed_gcd = (
+                1000
+                if self._buff_tracker.is_active("Unholy Presence", timestamp)
+                else 1500
+            )
 
             # don't handle spell GCD for now
-            latency = timestamp_diff - 1500
+            latency = timestamp_diff - assumed_gcd
             if latency > -50:
                 latencies.append(max(0, latency))
 
@@ -1303,7 +1312,7 @@ class CoreAnalysisConfig:
 
     def get_analyzers(self, fight: Fight, buff_tracker, dead_zone_analyzer, items):
         return [
-            GCDAnalyzer(fight.source.id),
+            GCDAnalyzer(fight.source.id, buff_tracker),
             RPAnalyzer(),
             CoreAbilities(),
             BombAnalyzer(fight.duration),

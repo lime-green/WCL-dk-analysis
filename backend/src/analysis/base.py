@@ -157,7 +157,7 @@ def combine_windows(*windows_list):
         if window.start <= combined_windows[-1].end:
             combined_windows[-1] = Window(
                 min(combined_windows[-1].start, window.start),
-                max(combined_windows[-1].end, window.end)
+                max(combined_windows[-1].end, window.end),
             )
         else:
             combined_windows.append(window)

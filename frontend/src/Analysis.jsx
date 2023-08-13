@@ -516,11 +516,14 @@ export const Analysis = () => {
       abilityDivClass += " filler-cast";
     }
 
+    const hasUnholyPresence = event.buffs.some((buff) => buff.ability === "Unholy Presence")
+    const assumedGCD = hasUnholyPresence ? 1000 : 1500
+
     if (event.has_gcd && offset) {
       let color;
-      if (offset > 2000) {
+      if (offset - assumedGCD > 500) {
         color = "red";
-      } else if (offset > 1600) {
+      } else if (offset - assumedGCD > 100) {
         color = "yellow";
       } else {
         color = "green";
