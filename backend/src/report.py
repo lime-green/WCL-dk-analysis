@@ -172,7 +172,11 @@ class Report:
         if ability_id in SPELL_TRANSLATIONS:
             return SPELL_TRANSLATIONS[ability_id]
 
-        if ability_id == 48266:
+        if ability_id == 50842:
+            return "Pestilence"
+        if ability_id == 51271:
+            return "Unbreakable Armor"
+        if ability_id in (48266, 48263, 50475):
             return "Blood Presence"
         if ability_id in (48265, 49772):
             return "Unholy Presence"
@@ -206,7 +210,7 @@ class Report:
             return "Unknown"
 
     def get_ability_icon(self, ability_id: int):
-        if ability_id == 48266:
+        if ability_id in (48266, 48263, 50475):
             return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_bloodpresence.jpg"
         if ability_id in (48265, 49772):
             return "https://wow.zamimg.com/images/wow/icons/large/spell_deathknight_unholypresence.jpg"
@@ -315,8 +319,7 @@ class Fight:
 
         combatant_info = self._combatant_info_lookup[source_id]
         for aura in combatant_info["auras"]:
-            if "name" not in aura:
-                aura["name"] = self._report.get_ability_name(aura["ability"])
+            aura["name"] = self._report.get_ability_name(aura["ability"])
             aura["ability_icon"] = self._report.get_ability_icon(aura["ability"])
 
         for gear in combatant_info["gear"]:
@@ -538,6 +541,9 @@ class Fight:
             normalized_event["ability_type"] = self._report.get_ability_type(
                 event["abilityGameID"]
             )
+            normalized_event["ability"] = self._report.get_ability_name(
+                event["abilityGameID"]
+            )
         if "sourceID" in event:
             normalized_event["source"] = self._report.get_actor_name(
                 normalized_event["sourceID"]
@@ -555,15 +561,6 @@ class Fight:
             normalized_event["target_dies_at"] = self._normalize_time(
                 self._report.get_target_death(normalized_event["targetID"])
             )
-
-        if "abilityGameID" in event:
-            normalized_event["ability"] = self._report.get_ability_name(
-                event["abilityGameID"]
-            )
-            if event["abilityGameID"] == 50842:
-                normalized_event["ability"] = "Pestilence"
-            if event["abilityGameID"] == 51271:
-                normalized_event["ability"] = "Unbreakable Armor"
         if "hitType" in event:
             normalized_event["hitType"] = HIT_TYPES[event["hitType"]]
             normalized_event["is_miss"] = normalized_event["hitType"] in MISS_EVENTS
