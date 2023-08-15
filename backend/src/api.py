@@ -1,8 +1,5 @@
-import asyncio
 import logging
-import functools
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Dict
 
@@ -68,11 +65,7 @@ async def analyze_fight(
         response.status_code = 503
         return {"error": "Bad response from Warcraft Logs, try again"}
 
-    loop = asyncio.get_running_loop()
-
-    events = await loop.run_in_executor(
-        ThreadPoolExecutor(), functools.partial(analyze, report, fight_id)
-    )
+    events = analyze(report, fight_id)
 
     # don't cache reports that are less than a day old
     ended_ago = datetime.now() - datetime.fromtimestamp(report.end_time / 1000)
