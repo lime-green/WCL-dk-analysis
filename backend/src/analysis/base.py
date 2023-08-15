@@ -141,6 +141,9 @@ def calculate_uptime(windows, ignore_windows, total_duration, max_duration=None)
             total_duration_without_ignores,
             max_duration,
         )
+
+    if not total_duration_without_ignores:
+        return 0
     return total_uptime / total_duration_without_ignores
 
 
