@@ -549,6 +549,7 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
         self._end_time = end_time
         self._buff_windows = {}
         self._add_starting_auras(starting_auras)
+        self._presences = {"Blood Presence", "Frost Presence", "Unholy Presence"}
 
     def _get_buff_windows(self, buff_name, buff_id, icon):
         return self._buff_windows.setdefault(
@@ -597,6 +598,13 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
         if event["type"] in ("removebuffstack", "refreshbuff", "heal"):
             # If we don't have a window, assume it was a starting aura
             if not windows.has_window:
+                # resolve the issue where combatant info lags behind the first event
+                # ie. on beasts when army is snapshotted with UP
+                if event["ability"] in self._presences:
+                    for presence in self._presences:
+                        presence_windows = self._buff_windows.get(presence)
+                        if presence_windows and presence_windows.has_active_window:
+                            presence_windows.pop()
                 windows.add_window(0)
         elif event["type"] == "applybuff":
             if event["ability"] in ("Speed", "Indestructible"):
