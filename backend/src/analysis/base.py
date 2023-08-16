@@ -112,8 +112,8 @@ class Window:
 
     def contains(self, timestamp):
         if self.end is None:
-            return self.start < timestamp
-        return self.start < timestamp <= self.end
+            return self.start <= timestamp
+        return self.start <= timestamp <= self.end
 
     def copy(self):
         return Window(self.start, self.end)

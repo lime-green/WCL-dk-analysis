@@ -680,6 +680,10 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
     def decorate_event(self, event):
         event["buffs"] = self.get_active_buffs(event["timestamp"])
 
+        if event.get("ability") in self._presences:
+            # only keep the first presence
+            presences = [buff for buff in event["buffs"] if "Presence" in buff["ability"]][1:]
+            event["buffs"] = [buff for buff in event["buffs"] if buff not in presences]
 
 class PetNameDetector(BasePreprocessor):
     INCLUDE_PET_EVENTS = True
