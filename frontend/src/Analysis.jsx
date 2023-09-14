@@ -1,4 +1,4 @@
-import React, {useCallback, useContext, useState} from "react";
+import React, {useCallback, useContext } from "react";
 import {LogAnalysisContext} from "./LogAnalysisContext.jsx";
 
 import BloodRune from "./assets/blood_rune.webp";
@@ -8,7 +8,7 @@ import DeathRune from "./assets/death_rune.webp";
 import { ArmyAnalysis } from "./ArmyAnalysis.jsx"
 import { GargoyleAnalysis } from "./GargoyleAnalysis"
 import { GhoulAnalysis } from "./GhoulAnalysis.jsx"
-import { formatCPM, formatIcon, formatTimestamp, formatUpTime, formatUsage } from "./helpers"
+import { formatCPM, formatIcon, formatTimestamp, formatUpTime, formatUsage, Tooltip } from "./helpers"
 
 const formatRune = (rune, i) => {
   const src = {
@@ -299,19 +299,6 @@ const Summary = () => {
       </div>
     )
   }, [])
-
-  const Tooltip = ({ tooltipText }) => {
-    const [hover, setHover] = useState(false)
-
-    return (
-      <span className="tooltip-container" onMouseOver={() => setHover(true)} onMouseOut={() => setHover(false)}>
-        <i className="fa fa-question-circle" />
-        <div className={`tooltip ${hover ? 'tooltip-show' : ''}`}>
-          {tooltipText}
-        </div>
-      </span>
-    )
-  }
 
   const formatScore = useCallback(score => {
     let color = "red"
