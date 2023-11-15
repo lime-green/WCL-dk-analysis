@@ -44,9 +44,11 @@ export const GargoyleAnalysis = ({ gargoyle }) => {
                 <div>
                   {formatUpTime(window.speed_uptime, "Speed")}
                 </div>
-                <div>
-                  {formatUpTime(window.berserking_uptime, "Berserking")}
-                </div>
+                {window.berserking_uptime !== null && (
+                  <div>
+                    {formatUpTime(window.berserking_uptime, "Berserking")}
+                  </div>
+                )}
                 {window.trinket_snapshots.map((snapshot, i) => {
                   const icon = formatIcon(snapshot.name, snapshot.icon)
 
