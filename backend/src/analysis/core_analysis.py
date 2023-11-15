@@ -579,6 +579,14 @@ class BuffTracker(BaseAnalyzer, BasePreprocessor):
     def num_pots(self):
         return self._num_windows("Speed") + self._num_windows("Indestructible")
 
+    @property
+    def has_berserking(self):
+        return bool(self._num_windows("Berserking"))
+
+    @property
+    def has_bloodfury(self):
+        return bool(self._num_windows("Blood Fury"))
+
     def preprocess_event(self, event):
         if event["type"] not in (
             "applybuff",

@@ -177,6 +177,7 @@ class GargoyleWindow(Window):
         self.snapshotted_t9 = (
             buff_tracker.is_active("Unholy Might", start) if items.has_t9_2p() else None
         )
+        self.snapshotted_bloodfury = buff_tracker.is_active("Blood Fury", start) if buff_tracker.has_bloodfury else None
 
         self._up_uptime = UnholyPresenceUptimeAnalyzer(
             self.end,
@@ -203,12 +204,24 @@ class GargoyleWindow(Window):
             self.start,
             max_duration=12000 - 25,
         )
+        self._berserking_uptime = BuffUptimeAnalyzer(
+            self.end,
+            buff_tracker,
+            ignore_windows,
+            "Berserking",
+            self.start,
+            max_duration=10000 - 25,
+        ) if buff_tracker.has_berserking else None
+
         self._uptimes = [
             self._up_uptime,
             self._bl_uptime,
             self._speed_uptime,
             self._hyperspeed_uptime,
         ]
+        if self._berserking_uptime:
+            self._uptimes.append(self._berserking_uptime)
+
         self.num_melees = 0
         self.num_casts = 0
         self.total_damage = 0
@@ -269,6 +282,10 @@ class GargoyleWindow(Window):
     def hyperspeed_uptime(self):
         return self._hyperspeed_uptime.uptime()
 
+    @property
+    def berserking_uptime(self):
+        return self._berserking_uptime.uptime() if self._berserking_uptime else None
+
     def _set_gargoyle_first_cast(self, event):
         self._gargoyle_first_cast = event["timestamp"]
         for uptime in self._uptimes:
@@ -299,6 +316,7 @@ class GargoyleWindow(Window):
             ScoreWeight(int(self.snapshotted_fc), 3),
             # Lower weight since this only lasts 12s
             ScoreWeight(self.hyperspeed_uptime, 2),
+            ScoreWeight(self.berserking_uptime or 0, self.berserking_uptime or 0),
             ScoreWeight(self.up_uptime, 4),
             ScoreWeight(self.bl_uptime, 10 if self.bl_uptime else 0),
             ScoreWeight(self.num_casts / max(1, self.num_melees + self.num_casts), 4),
@@ -321,6 +339,10 @@ class GargoyleWindow(Window):
             ScoreWeight(
                 int(self.snapshotted_t9) if self.snapshotted_t9 is not None else 0,
                 2 if self.snapshotted_t9 is not None else 0,
+            ),
+            ScoreWeight(
+                int(self.snapshotted_bloodfury) if self.snapshotted_bloodfury is not None else 0,
+                2 if self.snapshotted_bloodfury is not None else 0,
             ),
         )
 
@@ -390,6 +412,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "snapshotted_fc": window.snapshotted_fc,
                         "snapshotted_sigil": window.snapshotted_sigil,
                         "snapshotted_t9": window.snapshotted_t9,
+                        "snapshotted_bloodfury": window.snapshotted_bloodfury,
                         "sigil_name": self._items.sigil and self._items.sigil.name,
                         "unholy_presence_uptime": window.up_uptime,
                         "bloodlust_uptime": window.bl_uptime,
@@ -397,6 +420,7 @@ class GargoyleAnalyzer(BaseAnalyzer):
                         "num_melees": window.num_melees,
                         "speed_uptime": window.speed_uptime,
                         "hyperspeed_uptime": window.hyperspeed_uptime,
+                        "berserking_uptime": window.berserking_uptime,
                         "start": window.start,
                         "end": window.end,
                         "trinket_snapshots": [
@@ -622,6 +646,9 @@ class ArmyAnalyzer(BaseAnalyzer):
             SnapshottableBuff("Hyperspeed Acceleration", "Hyperspeed"),
             SnapshottableBuff("Speed", "Speed"),
         ]
+
+        if buff_tracker.has_berserking:
+            self._snapshottable_buffs.append(SnapshottableBuff("Berserking", "Berserking"))
 
     def add_event(self, event):
         if event["type"] == "cast" and event["ability"] == "Army of the Dead":
