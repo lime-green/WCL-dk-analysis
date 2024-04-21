@@ -139,27 +139,13 @@ class Analyzer:
             def detect():
                 for event in self._events:
                     if event["type"] == "cast" and event["ability"] in (
-                        "Howling Blast",
                         "Frost Strike",
                     ):
                         return "Frost"
                     if event["type"] == "cast" and event["ability"] in (
-                        "Summon Gargoyle",
-                        "Ghoul Frenzy",
+                        "Scourge Strike",
                     ):
                         return "Unholy"
-
-                # If the above doesn't work, then try with less determinate spells
-                for event in self._events:
-                    if event["type"] == "cast" and event["ability"] == "Obliterate":
-                        return "Frost"
-                    if (
-                        event["type"] == "cast"
-                        and event["ability"] == "Death and Decay"
-                    ):
-                        return "Unholy"
-
-                return None
 
             self.__spec = detect()
         return self.__spec
