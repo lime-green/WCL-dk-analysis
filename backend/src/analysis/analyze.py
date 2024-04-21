@@ -90,38 +90,30 @@ class Analyzer:
 
             self._buff_tracker = BuffTracker(
                 {
-                    "Unbreakable Armor",
+                    # Lust
                     "Heroism",
                     "Bloodlust",
-                    "Speed",
+                    "Time Warp",
+                    # Consumables
+                    "Golem's Strength",
+                    # Frost Buffs
+                    "Pillar of Frost",
                     "Rime",
-                    "Meteorite Whetstone",
-                    "Hyperspeed Acceleration",
-                    "Reflection of Torment",
-                    "Greatness",
                     "Killing Machine",
-                    "Grim Toll",
-                    "Indestructible",
-                    "Mark of Norgannon",
-                    "Berserking",
-                    "Blood Fury",
-                    "Black Magic",
+                    # Unholy Buffs
+                    "Runic Corruption",
+                    "Sudden Doom",
+                    "Unholy Frenzy",
+                    # Enchants
+                    "Synapse Springs",
                     "Swordguard Embroidery",
                     "Unholy Strength",
-                    "Skyflare Swiftness",
-                    "Edward's Insight",
-                    "Loatheb's Shadow",
-                    "Cinderglacier",
-                    "Mjolnir Runestone",
-                    "Implosion",  # Dark Matter
-                    "Comet's Trail",
-                    "Wrathstone",
-                    "Blood of the Old God",
-                    "Pyrite Infusion",
-                    "Fury of the Five Flights",
-                    "Desolation",
-                    "Unholy Force",  # Sigil
-                    "Unholy Might",  # T9 2p
+                    "Lifeblood",
+                    # Racials
+                    "Berserking",
+                    "Blood Fury",
+                    # Trinkets
+                    # Death Knight Presences
                     "Blood Presence",
                     "Unholy Presence",
                     "Frost Presence",
