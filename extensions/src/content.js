@@ -1,6 +1,10 @@
 const buttonId = "dk-analyze-btn"
 const iframeId = "dk-analyze-iframe"
 let currentParams = null
+const localIDs = [
+  "aalplhgcljbeccbfkbdfhkfnenfmjhdf",
+  "dpdollnoobppbpcnfneijbmlkddpfaeg",
+]
 
 function isEqual(obj1, obj2) {
     var props1 = Object.getOwnPropertyNames(obj1);
@@ -131,7 +135,7 @@ function handler() {
 }
 
 function getFrameURL(params) {
-  if (window.chrome && window.chrome.runtime.id === "aalplhgcljbeccbfkbdfhkfnenfmjhdf") {
+  if (window.chrome && localIDs.includes(window.chrome.runtime.id)) {
     return `http://localhost:5173?${new URLSearchParams(params)}`
   }
   return `https://d2krnvrnlw0zwg.cloudfront.net/?${new URLSearchParams(params)}`
