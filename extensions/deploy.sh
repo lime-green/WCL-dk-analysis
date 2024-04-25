@@ -16,4 +16,5 @@ cd /tmp
 zip "${cwd}/firefox_extension.zip" -u manifest.json
 
 # No changes needed
+cd $cwd
 cp chrome_extension.zip edge_extension.zip
